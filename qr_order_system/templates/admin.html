@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店家即時後台 - 點餐系統</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #eef2f5; }
+        h1, h2 { color: #333; }
+        .section { background: white; padding: 15px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .order-card { background: #fff8e1; padding: 15px; margin-bottom: 15px; border-radius: 8px; border-left: 6px solid #ff9800; }
+        .completed { border-left-color: #4caf50; opacity: 0.6; background: #f1f8e9; }
+        .btn { background: #2196f3; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .danger-btn { background: #f44336; }
+        input, select { padding: 6px; margin-right: 10px; }
+    </style>
+</head>
+<body onload="initData()">
+    <h1>👨‍🍳 店家即時管理後台</h1>
+    
+    <!-- 菜單管理區塊 -->
+    <div class="section">
+        <h2>🍔 菜單管理</h2>
+        <div style="margin-bottom: 15px;">
+            <input type="text" id="new-name" placeholder="品項名稱">
+            <input type="number" id="new-price" placeholder="價格">
+            <select id="new-category">
+                <option value="主食">主食</option>
+                <option value="點心">點心</option>
+                <option value="飲料">飲料</option>
+            </select>
+            <button class="btn" onclick="addMenuItem()">新增品項</button>
+        </div>
+        <ul id="menu-management-list">載入中...</ul>
+    </div>
+
+    <!-- 訂單管理區塊 -->
+    <div class="section">
+        <h2>📋 即時訂單列表 (每 3 秒自動更新)</h2>
+        <div id="orders-container">載入中...</div>
+    </div>
+
+    <script>
+        function initData() {
+            fetchOrders();
+            fetchMenu();
+            setInterval(fetchOrders, 3000);
+        }
+
+        // 載入菜單列表供管理
+        function fetchMenu() {
+            fetch('/api/menu')
+            .then(res => res.json())
+            .then(menu => {
+                const list = document.getElementById('menu-management-list');
+                list.innerHTML = '';
+                menu.forEach(item => {
+                    let li = document.createElement('li');
+                    li.style.margin = '8px 0';
+                    li.innerHTML = `<strong>${item.name}</strong> - $${item.price} (${item.category}) 
+                                    <button class="btn danger-btn" onclick="deleteMenuItem(${item.id})" style="margin-left: 10px;">刪除</button>`;
+                    list.appendChild(li);
+                });
+            });
+        }
+
+        // 新增菜單
+        function addMenuItem() {
+            let name = document.getElementById('new-name').value;
+            let price = document.getElementById('new-price').value;
+            let category = document.getElementById('new-category').value;
+
+            if (!name || !price) {
+                alert('請完整填寫名稱與價格！');
+                return;
+            }
+
+            fetch('/api/menu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, price: price, category: category })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.getElementById('new-name').value = '';
+                    document.getElementById('new-price').value = '';
+                    fetchMenu();
+                }
+            });
+        }
+
+        // 刪除菜單
+        function deleteMenuItem(id) {
+            if (!confirm('確定要刪除這個品項嗎？')) return;
+            fetch(`/api/menu/${id}`, { method: 'DELETE' })
+            .then(res => res.json())
+            .then(data => {
+                fetchMenu();
+            });
+        }
+
+        // 載入訂單
+        function fetchOrders() {
+            fetch('/api/orders')
+            .then(res => res.json())
+            .then(orders => {
+                const container = document.getElementById('orders-container');
+                container.innerHTML = '';
+
+                if (orders.length === 0) {
+                    container.innerHTML = '<p>目前沒有任何訂單。</p>';
+                    return;
+                }
+
+                orders.reverse().forEach(order => {
+                    let itemsHtml = order.items.map(i => `<li>${i.name} x ${i.quantity} ($${i.subtotal})</li>`).join('');
+                    let isCompleted = order.status === '已完成';
+                    
+                    let card = document.createElement('div');
+                    card.className = `order-card ${isCompleted ? 'completed' : ''}`;
+                    card.innerHTML = `
+                        <h3>桌號：${order.table} 號桌 | 訂單編號 #${order.order_id}</h3>
+                        <p>狀態：<strong>${order.status}</strong></p>
+                        <ul>${itemsHtml}</ul>
+                        <p><strong>總金額：$${order.total_price} 元</strong></p>
+                        ${!isCompleted ? `<button class="btn" onclick="completeOrder(${order.order_id})">標記為已完成</button>` : '<span>✅ 已完成出餐</span>'}
+                    `;
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        function completeOrder(orderId) {
+            fetch(`/api/orders/${orderId}/status`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: '已完成' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                fetchOrders();
+            });
+        }
+    </script>
+</body>
+</html>
