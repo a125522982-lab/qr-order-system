@@ -1,183 +1,143 @@
 <!DOCTYPE html>
-
 <html lang="zh-TW">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>桌號 {{ table }} - 線上點餐</title>
-
     <style>
-
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f9f9f9; }
-
-        h1 { color: #333; font-size: 22px; }
-
-        .item-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-
-        .btn { background: #ff5722; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-
-        .btn:active { background: #e64a19; }
-
-        #cart-section { margin-top: 30px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-
-        .submit-btn { background: #4caf50; width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; }
-
+        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+        .container { max-width: 800px; margin: auto; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .menu-item { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .cart-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        button.danger { background: #dc3545; }
+        button:hover { opacity: 0.9; }
+        .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
     </style>
-
 </head>
-
 <body>
-
-    <h1>🍽️ 歡迎光臨 - 目前桌號：<span id="table-num" style="color: red;">{{ table }}</span> 號桌</h1>
-
+<div class="container">
+    <h1>🍽️ 點餐系統 - {{ table }} 號桌</h1>
     
-
-    <h2>菜單列表</h2>
-
-    <div id="menu-list">
-
-        {% for item in menu %}
-
-        <div class="item-card">
-
-            <div>
-
-                <strong>{{ item.name }}</strong><br>
-
-                <span style="color: #666;">$ {{ item.price }} 元</span>
-
-            </div>
-
-            <button class="btn" onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }})">加到購物車</button>
-
+    <h2>菜單</h2>
+    <div class="menu-grid">
+        {% for id, item in menu.items() %}
+        <div class="menu-item">
+            <h3>{{ item.name }}</h3>
+            <p>價格: ${{ item.price }}</p>
+            <button onclick="addToCart('{{ item.name }}', {{ item.price }})">加入購物車</button>
         </div>
-
         {% endfor %}
-
     </div>
 
-    <div id="cart-section">
-
-        <h3>🛒 您的購物車</h3>
-
-        <ul id="cart-items">
-
-            <li>購物車是空的</li>
-
-        </ul>
-
-        <p><strong>總計：$ <span id="total-price">0</span> 元</strong></p>
-
-        <button class="btn submit-btn" onclick="submitOrder()">送出訂單</button>
-
+    <div class="cart-box">
+        <h2>🛒 您的購物車</h2>
+        <div id="cart-items">
+            <p style="color: #777;">目前購物車是空的</p>
+        </div>
+        <hr>
+        <h3>總計金額: $<span id="cart-total">0</span></h3>
+        <button onclick="submitOrder()" style="font-size: 18px; width: 100%; padding: 12px;">確認送出訂單</button>
     </div>
+</div>
 
-    <script>
+<script>
+    // 購物車陣列
+    let cart = [];
 
-        let cart = {};
+    // 加入購物車
+    function addToCart(name, price) {
+        let found = cart.find(item => item.name === name);
+        if (found) {
+            found.quantity += 1;
+        } else {
+            cart.push({ name: name, price: price, quantity: 1 });
+        }
+        updateCartUI();
+    }
 
-        const table = "{{ table }}";
-
-        function addToCart(id, name, price) {
-
-            if (!cart[id]) {
-
-                cart[id] = { id: id, name: name, price: price, quantity: 0 };
-
+    // 變更數量（加減）
+    function changeQuantity(name, delta) {
+        let found = cart.find(item => item.name === name);
+        if (found) {
+            found.quantity += delta;
+            if (found.quantity <= 0) {
+                removeFromCart(name);
+            } else {
+                updateCartUI();
             }
+        }
+    }
 
-            cart[id].quantity += 1;
+    // 從購物車刪除品項
+    function removeFromCart(name) {
+        cart = cart.filter(item => item.name !== name);
+        updateCartUI();
+    }
 
-            updateCartUI();
-
+    // 更新購物車畫面與總金額
+    function updateCartUI() {
+        const container = document.getElementById('cart-items');
+        const totalSpan = document.getElementById('cart-total');
+        
+        if (cart.length === 0) {
+            container.innerHTML = '<p style="color: #777;">目前購物車是空的</p>';
+            totalSpan.innerText = '0';
+            return;
         }
 
-        function updateCartUI() {
+        let html = '';
+        let total = 0;
 
-            const cartList = document.getElementById('cart-items');
+        cart.forEach(item => {
+            let subtotal = item.price * item.quantity;
+            total += subtotal;
+            html += `
+                <div class="cart-item">
+                    <span><b>${item.name}</b> x ${item.quantity} ($${subtotal})</span>
+                    <div>
+                        <button onclick="changeQuantity('${item.name}', 1)">+</button>
+                        <button onclick="changeQuantity('${item.name}', -1)">-</button>
+                        <button class="danger" onclick="removeFromCart('${item.name}')">刪除</button>
+                    </div>
+                </div>
+            `;
+        });
 
-            cartList.innerHTML = '';
+        container.innerHTML = html;
+        totalSpan.innerText = total;
+    }
 
-            let total = 0;
-
-            if (Object.keys(cart).length === 0) {
-
-                cartList.innerHTML = '<li>購物車是空的</li>';
-
-                document.getElementById('total-price').innerText = 0;
-
-                return;
-
-            }
-
-            for (let id in cart) {
-
-                let item = cart[id];
-
-                total += item.price * item.quantity;
-
-                let li = document.createElement('li');
-
-                li.innerText = `${item.name} x ${item.quantity} = $${item.price * item.quantity}元`;
-
-                cartList.appendChild(li);
-
-            }
-
-            document.getElementById('total-price').innerText = total;
-
+    // 總確認並送出訂單
+    function submitOrder() {
+        if (cart.length === 0) {
+            alert('購物車是空的，請先選擇餐點！');
+            return;
         }
 
-        function submitOrder() {
+        let total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        let tableNumber = "{{ table }}";
 
-            if (Object.keys(cart).length === 0) {
-
-                alert('購物車是空的喔！');
-
-                return;
-
+        fetch('/api/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ table: tableNumber, items: cart, total: total })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('🎉 訂單已成功送出！店家正在為您準備。');
+                cart = []; // 清空購物車
+                updateCartUI();
+            } else {
+                alert('送出失敗：' + data.message);
             }
-
-            let itemsArray = Object.values(cart).map(i => ({ id: i.id, quantity: i.quantity }));
-
-            fetch('/api/orders', {
-
-                method: 'POST',
-
-                headers: { 'Content-Type': 'application/json' },
-
-                body: JSON.stringify({ table: table, items: itemsArray })
-
-            })
-
-            .then(res => res.json())
-
-            .then(data => {
-
-                if (data.status === 'success') {
-
-                    alert('🎉 訂單送出成功！店家已經收到您的餐點。');
-
-                    cart = {};
-
-                    updateCartUI();
-
-                } else {
-
-                    alert('送出失敗：' + data.message);
-
-                }
-
-            });
-
-        }
-
-    </script>
-
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('送出訂單發生錯誤，請稍後再試');
+        });
+    }
+</script>
 </body>
-
 </html>
