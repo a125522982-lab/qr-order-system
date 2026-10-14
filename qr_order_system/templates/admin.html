@@ -1,3 +1,4 @@
+HTML
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -60,7 +61,7 @@
                     <th>操作</th>
                 </tr>
             </thead>
-            <tbody id="menu-table-body">
+            <tbody>
                 {% for id, item in menu.items() %}
                 <tr>
                     <td>{{ id }}</td>
@@ -77,11 +78,14 @@
 </div>
 
 <script>
-    // 從頁面渲染時的變數轉成前端物件，或透過 API 取得
-    let currentMenu = {{ menu | tojson }};
+    // 先向後端取得最新的菜單資料
+    async function getMenu() {
+        let res = await fetch('/api/menu');
+        return await res.json();
+    }
 
     // 新增品項
-    function addMenuItem() {
+    async function addMenuItem() {
         const name = document.getElementById('new-name').value.trim();
         const price = parseInt(document.getElementById('new-price').value);
 
@@ -90,23 +94,23 @@
             return;
         }
 
-        // 自動產生一個新的 ID（用時間戳或目前數量+1）
+        let currentMenu = await getMenu();
         let newId = String(Date.now());
         currentMenu[newId] = { name: name, price: price };
 
-        // 傳送到後端存檔
         saveMenuToServer(currentMenu, '新增成功！');
     }
 
     // 刪除品項
-    function deleteMenuItem(id) {
+    async function deleteMenuItem(id) {
         if (confirm('確定要刪除這個品項嗎？')) {
+            let currentMenu = await getMenu();
             delete currentMenu[id];
             saveMenuToServer(currentMenu, '刪除成功！');
         }
     }
 
-    // 將整套菜單送回後端儲存到 menu.json
+    // 儲存菜單到後端
     function saveMenuToServer(menuData, successMessage) {
         fetch('/api/menu', {
             method: 'POST',
@@ -117,7 +121,7 @@
         .then(data => {
             if (data.success) {
                 alert(successMessage);
-                location.reload(); // 重新整理畫面
+                location.reload();
             } else {
                 alert('操作失敗：' + data.message);
             }
