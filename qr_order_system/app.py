@@ -70,19 +70,29 @@ def update_menu_api():
   return jsonify({"success": False, "message": "資料錯誤"}), 400
 
 
-# 5. 接收客人口腹訂單的 API
-@app.route("/api/order", methods=["POST"])
+# 5. 接收客人口腹訂單的 API（已加入防呆機制）
+@app.route("/api/order", methods=["POST"], endpoint="place_order_api")
 def place_order():
-  data = request.json
-  table = data.get("table")
-  items = data.get("items")
-  total = data.get("total")
+  try:
+    data = request.get_json(silent=True)
+    if not data:
+      return jsonify(
+          {"success": False, "message": "無效的請求資料"}
+      ), 400
 
-  new_order = {"table": table, "items": items, "total": total}
-  ORDERS.append(new_order)
-  print(f"收到來自 {table} 號桌的新訂單：", new_order)
-  return jsonify({"success": True, "message": "訂單送出成功！"})
+    table = data.get("table", "未知桌號")
+    items = data.get("items", [])
+    total = data.get("total", 0)
 
+    new_order = {"table": table, "items": items, "total": total}
+    ORDERS.append(new_order)
+    print(f"收到來自 {table} 號桌的新訂單：", new_order)
 
+    return jsonify({"success": True, "message": "訂單送出成功！"})
+  except Exception as e:
+    print(f"處理訂單發生錯誤: {str(e)}")
+    return jsonify(
+        {"success": False, "message": f"伺服器內部錯誤: {str(e)}"}
+    ), 500
 if __name__ == "__main__":
   app.run(debug=True)
