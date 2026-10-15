@@ -54,6 +54,7 @@ default_menu = {
 ORDERS = []
 ACCEPTED_ORDERS = []
 COMPLETED_ORDERS = []
+CANCELLED_ORDERS = []
 
 
 def load_menu():
@@ -95,7 +96,7 @@ def customer_menu():
 
 @app.route("/admin")
 def admin_page():
-    global ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS
+    global ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS
     current_menu = load_menu()
     
     def clean_list(lst, status):
@@ -113,13 +114,24 @@ def admin_page():
                         "phone_last4": phone_last4,
                         "food_list": fl,
                         "total": int(o.get("total", 0)),
-                        "status": status
+                        "status": status,
+                        "est_time": str(o.get("est_time", ""))
                     })
         return cleaned
 
     ORDERS = clean_list(ORDERS, "pending")
     ACCEPTED_ORDERS = clean_list(ACCEPTED_ORDERS, "accepted")
     COMPLETED_ORDERS = clean_list(COMPLETED_ORDERS, "completed")
+    CANCELLED_ORDERS = clean_list(CANCELLED_ORDERS, "cancelled")
+
+    # 計算今日營收與品項統計
+    total_revenue = sum(o["total"] for o in COMPLETED_ORDERS)
+    item_stats = {}
+    for o in COMPLETED_ORDERS:
+        for item in o["food_list"]:
+            name = item["name"]
+            qty = int(item.get("quantity", 1))
+            item_stats[name] = item_stats.get(name, 0) + qty
 
     return render_template(
         "admin.html",
@@ -127,25 +139,32 @@ def admin_page():
         orders=ORDERS,
         accepted_orders=ACCEPTED_ORDERS,
         completed_orders=COMPLETED_ORDERS,
+        cancelled_orders=CANCELLED_ORDERS,
+        total_revenue=total_revenue,
+        item_stats=item_stats
     )
 
 
-# 提供客戶端查詢自己訂單狀態的 API
+# 客戶端查詢指定訂單狀態的 API (供追蹤與自行搜尋使用)
 @app.route("/api/order/status", methods=["GET"])
 def check_order_status():
     order_id = request.args.get("order_id")
-    if not order_id:
-        return jsonify({"success": False, "message": "缺少訂單編號"}), 400
-
-    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
-    for o in all_orders:
-        if str(o.get("id")) == str(order_id):
-            return jsonify({
-                "success": True,
-                "order": o
-            })
-            
-    return jsonify({"success": False, "message": "找不到該訂單"}), 404
+    phone_last4 = request.args.get("phone_last4")
+    
+    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS + CANCELLED_ORDERS
+    
+    if order_id:
+        for o in all_orders:
+            if str(o.get("id")) == str(order_id):
+                return jsonify({"success": True, "order": o})
+                
+    if phone_last4:
+        # 反向搜尋該電話後四碼最近的一筆未完成/製作中訂單
+        for o in reversed(all_orders):
+            if str(o.get("phone_last4")) == str(phone_last4) and o.get("status") in ["pending", "accepted", "completed"]:
+                return jsonify({"success": True, "order": o})
+                
+    return jsonify({"success": False, "message": "找不到相關訂單"}), 404
 
 
 @app.route("/api/menu", methods=["GET", "POST"])
@@ -210,7 +229,8 @@ def place_order():
             "phone_last4": phone_last4,
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
-            "status": "pending"
+            "status": "pending",
+            "est_time": ""
         }
 
         ORDERS.append(new_order)
@@ -219,6 +239,7 @@ def place_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+# 接受訂單並設定預估取餐時間
 @app.route("/api/order/accept", methods=["POST"])
 def accept_order():
     try:
@@ -227,11 +248,14 @@ def accept_order():
             return jsonify({"success": False, "message": "無效的訂單編號"}), 400
 
         target_id = str(data["order_id"])
+        est_time = str(data.get("est_time", "15分鐘"))
+        
         found_order = None
         for i, order in enumerate(ORDERS):
             if str(order.get("id")) == target_id:
                 found_order = ORDERS.pop(i)
                 found_order["status"] = "accepted"
+                found_order["est_time"] = est_time
                 break
 
         if found_order:
@@ -243,6 +267,7 @@ def accept_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
+# 完成訂單
 @app.route("/api/order/complete", methods=["POST"])
 def complete_order():
     try:
@@ -263,6 +288,41 @@ def complete_order():
             return jsonify({"success": True})
 
         return jsonify({"success": False, "message": "找不到該筆訂單"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
+# 取消訂單 (客戶端或後台皆可呼叫)
+@app.route("/api/order/cancel", methods=["POST"])
+def cancel_order():
+    try:
+        data = request.get_json(silent=True)
+        if not data or "order_id" not in data:
+            return jsonify({"success": False, "message": "無效的訂單編號"}), 400
+
+        target_id = str(data["order_id"])
+        found_order = None
+        
+        # 只能從 pending (待處理) 中取消，若已接受則需由後台處理或限制
+        for i, order in enumerate(ORDERS):
+            if str(order.get("id")) == target_id:
+                found_order = ORDERS.pop(i)
+                found_order["status"] = "cancelled"
+                break
+                
+        # 允許後台從已接受中取消
+        if not found_order:
+            for i, order in enumerate(ACCEPTED_ORDERS):
+                if str(order.get("id")) == target_id:
+                    found_order = ACCEPTED_ORDERS.pop(i)
+                    found_order["status"] = "cancelled"
+                    break
+
+        if found_order:
+            CANCELLED_ORDERS.append(found_order)
+            return jsonify({"success": True})
+
+        return jsonify({"success": False, "message": "找不到該筆訂單或已無法取消"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
