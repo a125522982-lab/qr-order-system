@@ -49,13 +49,39 @@ def customer_menu():
 
 @app.route("/admin")
 def admin_page():
-    current_menu = load_menu()
-    return render_template(
-        "admin.html",
-        menu=current_menu,
-        orders=ORDERS,
-        completed_orders=COMPLETED_ORDERS,
-    )
+    try:
+        current_menu = load_menu()
+        
+        # 安全清洗 ORDERS 與 COMPLETED_ORDERS，確保所有欄位完整且格式正確
+        safe_orders = []
+        for o in ORDERS:
+            if isinstance(o, dict):
+                safe_orders.append({
+                    "id": str(o.get("id", time.time())),
+                    "table": str(o.get("table", "未知")),
+                    "items": o.get("items", []),
+                    "total": int(o.get("total", 0))
+                })
+
+        safe_completed = []
+        for o in COMPLETED_ORDERS:
+            if isinstance(o, dict):
+                safe_completed.append({
+                    "id": str(o.get("id", time.time())),
+                    "table": str(o.get("table", "未知")),
+                    "items": o.get("items", []),
+                    "total": int(o.get("total", 0))
+                })
+
+        return render_template(
+            "admin.html",
+            menu=current_menu,
+            orders=safe_orders,
+            completed_orders=safe_completed,
+        )
+    except Exception as e:
+        print("後台渲染發生例外:", str(e))
+        return f"後台載入錯誤: {str(e)}", 500
 
 
 @app.route("/api/menu", methods=["GET", "POST"])
@@ -76,19 +102,19 @@ def place_order():
         if not data:
             return jsonify({"success": False, "message": "無效資料"}), 400
 
-        # 標準化品項內容，避免亂碼與物件衝突
         raw_items = data.get("items", [])
         cleaned_items = []
-        for item in raw_items:
-            if isinstance(item, dict):
-                cleaned_items.append({
-                    "name": str(item.get("name", "未知餐點")),
-                    "price": int(item.get("price", 0)),
-                    "quantity": int(item.get("quantity", 1)),
-                })
+        if isinstance(raw_items, list):
+            for item in raw_items:
+                if isinstance(item, dict):
+                    cleaned_items.append({
+                        "name": str(item.get("name", "未知餐點")),
+                        "price": int(item.get("price", 0)),
+                        "quantity": int(item.get("quantity", 1)),
+                    })
 
         new_order = {
-            "id": str(int(time.time() * 1000)),  # 產生唯一的訂單 ID
+            "id": str(int(time.time() * 1000)),
             "table": str(data.get("table", "1")),
             "items": cleaned_items,
             "total": int(data.get("total", 0)),
@@ -110,7 +136,6 @@ def complete_order():
 
         target_id = str(data["order_id"])
         
-        # 尋找並移動該筆訂單
         found_order = None
         for i, order in enumerate(ORDERS):
             if str(order.get("id")) == target_id:
