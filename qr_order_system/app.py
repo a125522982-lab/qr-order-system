@@ -98,14 +98,13 @@ def admin_page():
     global ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS
     current_menu = load_menu()
     
-    def clean_list(lst):
+    def clean_list(lst, status):
         cleaned = []
         for o in lst:
             if isinstance(o, dict) and callable(o.get("food_list")) is False:
                 fl = o.get("food_list", [])
                 if isinstance(fl, list):
                     phone = str(o.get("phone", "0000000000"))
-                    # 自動擷取完整電話的後四碼作為取餐編號
                     phone_last4 = phone[-4:] if len(phone) >= 4 else "0000"
                     cleaned.append({
                         "id": str(o.get("id", time.time())),
@@ -113,13 +112,14 @@ def admin_page():
                         "phone": phone,
                         "phone_last4": phone_last4,
                         "food_list": fl,
-                        "total": int(o.get("total", 0))
+                        "total": int(o.get("total", 0)),
+                        "status": status
                     })
         return cleaned
 
-    ORDERS = clean_list(ORDERS)
-    ACCEPTED_ORDERS = clean_list(ACCEPTED_ORDERS)
-    COMPLETED_ORDERS = clean_list(COMPLETED_ORDERS)
+    ORDERS = clean_list(ORDERS, "pending")
+    ACCEPTED_ORDERS = clean_list(ACCEPTED_ORDERS, "accepted")
+    COMPLETED_ORDERS = clean_list(COMPLETED_ORDERS, "completed")
 
     return render_template(
         "admin.html",
@@ -128,6 +128,24 @@ def admin_page():
         accepted_orders=ACCEPTED_ORDERS,
         completed_orders=COMPLETED_ORDERS,
     )
+
+
+# 提供客戶端查詢自己訂單狀態的 API
+@app.route("/api/order/status", methods=["GET"])
+def check_order_status():
+    order_id = request.args.get("order_id")
+    if not order_id:
+        return jsonify({"success": False, "message": "缺少訂單編號"}), 400
+
+    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
+    for o in all_orders:
+        if str(o.get("id")) == str(order_id):
+            return jsonify({
+                "success": True,
+                "order": o
+            })
+            
+    return jsonify({"success": False, "message": "找不到該訂單"}), 404
 
 
 @app.route("/api/menu", methods=["GET", "POST"])
@@ -183,18 +201,20 @@ def place_order():
 
         phone = str(data.get("phone", "0000000000"))
         phone_last4 = phone[-4:] if len(phone) >= 4 else "0000"
+        order_id = str(int(time.time() * 1000))
 
         new_order = {
-            "id": str(int(time.time() * 1000)),
+            "id": order_id,
             "table": str(data.get("table", "1")),
             "phone": phone,
             "phone_last4": phone_last4,
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
+            "status": "pending"
         }
 
         ORDERS.append(new_order)
-        return jsonify({"success": True, "message": "ok"})
+        return jsonify({"success": True, "order_id": order_id, "message": "ok"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -211,6 +231,7 @@ def accept_order():
         for i, order in enumerate(ORDERS):
             if str(order.get("id")) == target_id:
                 found_order = ORDERS.pop(i)
+                found_order["status"] = "accepted"
                 break
 
         if found_order:
@@ -234,6 +255,7 @@ def complete_order():
         for i, order in enumerate(ACCEPTED_ORDERS):
             if str(order.get("id")) == target_id:
                 found_order = ACCEPTED_ORDERS.pop(i)
+                found_order["status"] = "completed"
                 break
 
         if found_order:
