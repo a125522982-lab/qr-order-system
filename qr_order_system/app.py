@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -75,12 +76,25 @@ def place_order():
         if not data:
             return jsonify({"success": False, "message": "無效資料"}), 400
 
-        ORDERS.append({
-            "table": data.get("table", "1"),
-            "items": data.get("items", []),
-            "total": data.get("total", 0),
-        })
+        # 標準化品項內容，避免亂碼與物件衝突
+        raw_items = data.get("items", [])
+        cleaned_items = []
+        for item in raw_items:
+            if isinstance(item, dict):
+                cleaned_items.append({
+                    "name": str(item.get("name", "未知餐點")),
+                    "price": int(item.get("price", 0)),
+                    "quantity": int(item.get("quantity", 1)),
+                })
 
+        new_order = {
+            "id": str(int(time.time() * 1000)),  # 產生唯一的訂單 ID
+            "table": str(data.get("table", "1")),
+            "items": cleaned_items,
+            "total": int(data.get("total", 0)),
+        }
+
+        ORDERS.append(new_order)
         return jsonify({"success": True, "message": "ok"})
     except Exception as e:
         print("訂單接收報錯:", str(e))
@@ -91,17 +105,25 @@ def place_order():
 def complete_order():
     try:
         data = request.get_json(silent=True)
-        if not data or "index" not in data:
-            return jsonify({"success": False, "message": "無效的索引"}), 400
+        if not data or "order_id" not in data:
+            return jsonify({"success": False, "message": "無效的訂單編號"}), 400
 
-        idx = int(data["index"])
-        if 0 <= idx < len(ORDERS):
-            finished = ORDERS.pop(idx)
-            COMPLETED_ORDERS.append(finished)
+        target_id = str(data["order_id"])
+        
+        # 尋找並移動該筆訂單
+        found_order = None
+        for i, order in enumerate(ORDERS):
+            if str(order.get("id")) == target_id:
+                found_order = ORDERS.pop(i)
+                break
+
+        if found_order:
+            COMPLETED_ORDERS.append(found_order)
             return jsonify({"success": True})
 
         return jsonify({"success": False, "message": "找不到該筆訂單"}), 404
     except Exception as e:
+        print("完成訂單報錯:", str(e))
         return jsonify({"success": False, "message": str(e)}), 500
 
 
