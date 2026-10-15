@@ -78,8 +78,8 @@ default_menu = {
 
 default_hours = {
     "force_close": False,
-    "Mon": {"open": "", "close": "", "enabled": False},
-    "Tue": {"open": "", "close": "", "enabled": False},
+    "Mon": {"open": "11:30", "close": "19:30", "enabled": False},
+    "Tue": {"open": "11:30", "close": "19:30", "enabled": False},
     "Wed": {"open": "11:30", "close": "19:30", "enabled": True},
     "Thu": {"open": "11:30", "close": "19:30", "enabled": True},
     "Fri": {"open": "11:30", "close": "21:30", "enabled": True},
@@ -126,18 +126,36 @@ def save_hours(hours_data):
 
 
 def check_is_open(hours_data):
+    # 1. 若手動勾選強制打烊，直接不開放點餐
     if hours_data.get("force_close", False):
         return False
+    
+    # 2. 判斷當天星期與時間
     weekday_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     now = datetime.now()
     today_key = weekday_map[now.weekday()]
     today_rule = hours_data.get(today_key, {})
+    
+    # 若當日未開啟營業
     if not today_rule.get("enabled", False):
         return False
+        
+    open_str = today_rule.get("open", "").strip()
+    close_str = today_rule.get("close", "").strip()
+    
+    if not open_str or not close_str:
+        return True  # 未指定時間則預設開放
+        
     try:
-        open_time = datetime.strptime(today_rule["open"], "%H:%M").time()
-        close_time = datetime.strptime(today_rule["close"], "%H:%M").time()
-        return open_time <= now.time() <= close_time
+        open_time = datetime.strptime(open_str, "%H:%M").time()
+        close_time = datetime.strptime(close_str, "%H:%M").time()
+        now_time = now.time()
+        
+        if open_time <= close_time:
+            return open_time <= now_time <= close_time
+        else:
+            # 跨夜營業（例如 18:00 到 02:00）
+            return now_time >= open_time or now_time <= close_time
     except Exception:
         return True
 
@@ -184,148 +202,16 @@ def update_hours():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# --- 優惠專區新增與刪除 API ---
-@app.route("/api/promo/add", methods=["POST"])
-def add_promo_item():
+# --- 菜單售罄切換 API ---
+@app.route("/api/menu/toggle_soldout", methods=["POST"])
+def toggle_soldout():
     try:
         data = request.get_json(silent=True)
-        if not data or not data.get("name") or not data.get("price"):
-            return jsonify({"success": False, "message": "請輸入完整名稱與金額"}), 400
-
-        menu = load_menu()
-        promo_id = "promo_" + str(int(time.time()))
-        
-        menu[promo_id] = {
-            "name": data["name"],
-            "price": int(data["price"]),
-            "category": "promo",
-            "is_sold_out": False
-        }
-        save_menu(menu)
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-
-@app.route("/api/promo/delete", methods=["POST"])
-def delete_promo_item():
-    try:
-        data = request.get_json(silent=True)
-        if not data or not data.get("item_id"):
-            return jsonify({"success": False, "message": "無效項目"}), 400
-
-        item_id = str(data["item_id"])
+        item_id = str(data.get("item_id", ""))
         menu = load_menu()
         if item_id in menu:
-            del menu[item_id]
+            menu[item_id]["is_sold_out"] = not menu[item_id].get("is_sold_out", False)
             save_menu(menu)
             return jsonify({"success": True})
-        return jsonify({"success": False, "message": "找不到該優惠品項"}), 404
+        return jsonify({"success": False, "message": "找不到該品項"}), 404
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-
-@app.route("/api/order", methods=["POST"])
-def place_order():
-    try:
-        data = request.get_json(force=True, silent=True)
-        if not data:
-            return jsonify({"success": False, "message": "無效資料"}), 400
-
-        order_id = str(int(time.time() * 1000))
-        phone = str(data.get("phone", "0000000000"))
-        
-        new_order = {
-            "id": order_id,
-            "table": str(data.get("table", "1")),
-            "phone": phone,
-            "phone_last4": phone[-4:],
-            "food_list": data.get("items", []),
-            "total": int(data.get("total", 0)),
-            "status": "pending",
-            "est_time": ""
-        }
-
-        ORDERS.append(new_order)
-        return jsonify({"success": True, "order_id": order_id})
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-
-@app.route("/api/order/status", methods=["GET"])
-def check_order_status():
-    order_id = request.args.get("order_id")
-    phone_last4 = request.args.get("phone_last4")
-    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS + CANCELLED_ORDERS
-    
-    if order_id:
-        for o in all_orders:
-            if str(o.get("id")) == str(order_id):
-                return jsonify({"success": True, "order": o})
-    if phone_last4:
-        for o in reversed(all_orders):
-            if str(o.get("phone_last4")) == str(phone_last4) and o.get("status") in ["pending", "accepted", "completed"]:
-                return jsonify({"success": True, "order": o})
-                
-    return jsonify({"success": False}), 404
-
-
-@app.route("/api/order/accept", methods=["POST"])
-def accept_order():
-    data = request.get_json(silent=True) or {}
-    target_id = str(data.get("order_id", ""))
-    est_time = str(data.get("est_time", "15分鐘"))
-    
-    for i, order in enumerate(ORDERS):
-        if str(order.get("id")) == target_id:
-            found = ORDERS.pop(i)
-            found["status"] = "accepted"
-            found["est_time"] = est_time
-            ACCEPTED_ORDERS.append(found)
-            
-            try:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(2)
-                s.connect((PRINTER_IP, PRINTER_PORT))
-                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n".encode("big5", errors="ignore")
-                for item in found['food_list']:
-                    print_data += f"{item['name']} x {item['quantity']}\n".encode("big5", errors="ignore")
-                print_data += f"總計: ${found['total']}\n\n\n\x1d\x56\x42\x00".encode("big5", errors="ignore")
-                s.sendall(print_data)
-                s.close()
-            except Exception:
-                pass
-            return jsonify({"success": True})
-            
-    return jsonify({"success": False}), 404
-
-
-@app.route("/api/order/complete", methods=["POST"])
-def complete_order():
-    data = request.get_json(silent=True) or {}
-    target_id = str(data.get("order_id", ""))
-    for i, order in enumerate(ACCEPTED_ORDERS):
-        if str(order.get("id")) == target_id:
-            found = ACCEPTED_ORDERS.pop(i)
-            found["status"] = "completed"
-            COMPLETED_ORDERS.append(found)
-            return jsonify({"success": True})
-    return jsonify({"success": False}), 404
-
-
-@app.route("/api/order/cancel", methods=["POST"])
-def cancel_order():
-    data = request.get_json(silent=True) or {}
-    target_id = str(data.get("order_id", ""))
-    for lst in [ORDERS, ACCEPTED_ORDERS]:
-        for i, order in enumerate(lst):
-            if str(order.get("id")) == target_id:
-                found = lst.pop(i)
-                found["status"] = "cancelled"
-                CANCELLED_ORDERS.append(found)
-                return jsonify({"success": True})
-    return jsonify({"success": False}), 404
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
