@@ -20,6 +20,7 @@
         .accepted-card { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #0c5460; }
         .completed-card { background: #e2e3e5; border: 1px solid #d6d8db; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #383d41; }
         .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .badge-phone { background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -41,7 +42,7 @@
                 {% for order in orders %}
                     <div class="order-card" id="order-{{ order.id }}">
                         <div>
-                            <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -70,7 +71,7 @@
                 {% for order in accepted_orders %}
                     <div class="accepted-card">
                         <div>
-                            <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -98,7 +99,7 @@
             {% if completed_orders %}
                 {% for order in completed_orders %}
                     <div class="completed-card">
-                        <b>{{ order.table }} 號桌</b> | 總金額: ${{ order.total }} | 
+                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 總金額: ${{ order.total }} | 
                         {% if order.food_list is iterable and order.food_list is not string %}
                             {% for item in order.food_list %}
                                 {{ item.name }} x {{ item.quantity }}{% if not loop.last %}, {% endif %}
@@ -205,7 +206,6 @@
         } catch (err) {}
     }, 3000);
 
-    // 切換售罄狀態
     function toggleSoldOut(itemId) {
         fetch('/api/menu/toggle_soldout', {
             method: 'POST',
