@@ -62,7 +62,7 @@
     {% if not is_open %}
         <!-- 非營業時間提示 banner -->
         <div class="closed-banner">
-            🔴 目前為非營業時間（時段：{{ hours.open }} - {{ hours.close }}），暫停線上點餐！
+            🔴 目前為非營業時間，暫停線上點餐！
         </div>
     {% else %}
         <!-- 點餐與購物車主畫面 -->
@@ -73,8 +73,11 @@
             <div class="category-tabs">
                 <button class="tab-btn active" onclick="filterMenu('all', this)">全部品項</button>
                 <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
+                <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
+                <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
                 <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
                 <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
+                <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料系列</button>
             </div>
 
             <div class="menu-grid" id="menu-grid">
