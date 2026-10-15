@@ -144,7 +144,9 @@
                 <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
             </div>
             
-            <button id="finish-order-btn" class="finish-btn" style="display: none;" onclick="finishOrder()">完成取餐 (返回點餐)</button>
+            <!-- 兩個階段按鈕 -->
+            <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
+            <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
         </div>
     </div>
 </div>
@@ -238,7 +240,6 @@
     
     function checkIsOpenNow() {
         if (hoursData.force_close) return false;
-
         const now = new Date();
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         const todayKey = days[now.getDay()];
@@ -248,22 +249,18 @@
         if (!todayRule.open || !todayRule.close) return true;
 
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        
         const openParts = todayRule.open.split(':');
         const openMinutes = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
-
         const closeParts = todayRule.close.split(':');
         const closeMinutes = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
 
         if (openMinutes <= closeMinutes) {
             return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
         } else {
-            // 跨夜營業
             return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
         }
     }
 
-    // 初始化頁面營業狀態
     window.addEventListener('DOMContentLoaded', () => {
         const isOpen = checkIsOpenNow();
         if (!isOpen) {
@@ -308,17 +305,9 @@
 
     function openOptionModal(id, name, price, category) {
         currentModalItem = { 
-            id: id, 
-            name: name, 
-            price: price, 
-            qty: 1, 
-            pepper: '要胡椒', 
-            spicy: '不辣', 
-            category: category,
-            sauces: { "番茄醬": 0, "起司醬": 0, "香菜檸檬醬": 0 },
-            sides: {}
+            id: id, name: name, price: price, qty: 1, pepper: '要胡椒', spicy: '不辣', category: category,
+            sauces: { "番茄醬": 0, "起司醬": 0, "香菜檸檬醬": 0 }, sides: {}
         };
-
         allSidesList.forEach(side => { currentModalItem.sides[side] = 0; });
         
         document.getElementById('modal-item-name').innerText = name;
@@ -410,53 +399,39 @@
     function changeSubQty(type, key, delta) {
         if (type === 'sauce') {
             let currentTotal = getTotalSauces();
-            if (delta > 0 && currentTotal >= 2) {
-                alert('醬料總共只能選擇 2 份！');
-                return;
-            }
+            if (delta > 0 && currentTotal >= 2) { alert('醬料總共只能選擇 2 份！'); return; }
             currentModalItem.sauces[key] += delta;
             if (currentModalItem.sauces[key] < 0) currentModalItem.sauces[key] = 0;
             renderSaucesUI();
         } else if (type === 'side') {
             let currentTotal = getTotalSides();
-            if (delta > 0 && currentTotal >= 3) {
-                alert('附餐總共只能選擇 3 份！');
-                return;
-            }
+            if (delta > 0 && currentTotal >= 3) { alert('附餐總共只能選擇 3 份！'); return; }
             currentModalItem.sides[key] += delta;
             if (currentModalItem.sides[key] < 0) currentModalItem.sides[key] = 0;
             renderSidesUI();
         }
     }
 
-    function closeOptionModal() {
-        document.getElementById('option-modal').style.display = 'none';
-    }
-
+    function closeOptionModal() { document.getElementById('option-modal').style.display = 'none'; }
     function resetOptionGroup(groupId, defaultValue) {
         document.querySelectorAll(`#${groupId} .option-btn`).forEach(b => {
             if (b.innerText === defaultValue) b.classList.add('selected');
             else b.classList.remove('selected');
         });
     }
-
     function selectOption(type, value, btnEl) {
         btnEl.parentElement.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
         btnEl.classList.add('selected');
         if (type === 'pepper') currentModalItem.pepper = value;
         if (type === 'spicy') currentModalItem.spicy = value;
     }
-
     function changeModalQty(delta) {
         currentModalItem.qty += delta;
         if (currentModalItem.qty < 1) currentModalItem.qty = 1;
         document.getElementById('modal-qty').innerText = currentModalItem.qty;
         updateModalSubtotal();
     }
-
-    function updateModalSubtotal() {
-        document.getElementById('modal-subtotal').innerText = currentModalItem.price * currentModalItem.qty;
-    }
+    function updateModalSubtotal() { document.getElementById('modal-subtotal').innerText = currentModalItem.price * currentModalItem.qty; }
 
     function confirmAddToCart() {
         let specText = "";
@@ -467,41 +442,21 @@
         if (isOnlyQty) {
             specText = "標準";
         } else if (isFriedWholeChicken) {
-            let totalSauces = getTotalSauces();
-            if (totalSauces !== 2) {
-                alert('【炸全雞】醬料總共必須剛好選擇 2 份！');
-                return;
-            }
+            if (getTotalSauces() !== 2) { alert('【炸全雞】醬料總共必須剛好選擇 2 份！'); return; }
             let sauceSummary = [];
             for (let sauce in currentModalItem.sauces) {
-                if (currentModalItem.sauces[sauce] > 0) {
-                    sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
-                }
+                if (currentModalItem.sauces[sauce] > 0) sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
             }
             specText = `醬料: ${sauceSummary.join(', ')} | 胡椒、辣椒另外附`;
         } else if (isChickenMeal) {
-            let totalSauces = getTotalSauces();
-            if (totalSauces !== 2) {
-                alert('【全雞餐】醬料總共必須剛好選擇 2 份！');
-                return;
-            }
-            let totalSides = getTotalSides();
-            if (totalSides !== 3) {
-                alert('【全雞餐】附餐總共必須剛好選擇 3 份！');
-                return;
-            }
-
-            let sauceSummary = [];
+            if (getTotalSauces() !== 2) { alert('【全雞餐】醬料總共必須剛好選擇 2 份！'); return; }
+            if (getTotalSides() !== 3) { alert('【全雞餐】附餐總共必須剛好選擇 3 份！'); return; }
+            let sauceSummary = [], sideSummary = [];
             for (let sauce in currentModalItem.sauces) {
-                if (currentModalItem.sauces[sauce] > 0) {
-                    sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
-                }
+                if (currentModalItem.sauces[sauce] > 0) sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
             }
-            let sideSummary = [];
             for (let side in currentModalItem.sides) {
-                if (currentModalItem.sides[side] > 0) {
-                    sideSummary.push(`${side}x${currentModalItem.sides[side]}`);
-                }
+                if (currentModalItem.sides[side] > 0) sideSummary.push(`${side}x${currentModalItem.sides[side]}`);
             }
             specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${sauceSummary.join(', ')} | 附餐: ${sideSummary.join(', ')}`;
         } else {
@@ -510,17 +465,10 @@
 
         let cartKey = `${currentModalItem.id}_${specText}`;
         let existingItem = cart.find(item => item.cartKey === cartKey);
-        
         if (existingItem) {
             existingItem.quantity += currentModalItem.qty;
         } else {
-            cart.push({
-                cartKey: cartKey,
-                name: currentModalItem.name,
-                price: currentModalItem.price,
-                quantity: currentModalItem.qty,
-                spec: specText
-            });
+            cart.push({ cartKey: cartKey, name: currentModalItem.name, price: currentModalItem.price, quantity: currentModalItem.qty, spec: specText });
         }
         updateCartUI();
         closeOptionModal();
@@ -543,18 +491,14 @@
             totalAmountEl.innerText = '0';
             return;
         }
-        let html = '';
-        let total = 0;
+        let html = '', total = 0;
         cart.forEach(item => {
             let subtotal = item.price * item.quantity;
             total += subtotal;
             let tagDisplay = item.spec === "Standard" ? "" : `<div class="item-spec-tag">📝 ${item.spec}</div>`;
             html += `
                 <tr>
-                    <td>
-                        <div style="font-weight: bold; color: #222;">${item.name}</div>
-                        ${tagDisplay}
-                    </td>
+                    <td><div style="font-weight: bold; color: #222;">${item.name}</div>${tagDisplay}</td>
                     <td>$${item.price}</td>
                     <td>
                         <button onclick="changeQty('${item.cartKey}', -1)" style="padding: 2px 8px; background: #6c757d;">-</button>
@@ -571,50 +515,24 @@
     }
 
     function promptCheckout() {
-        if (cart.length === 0) {
-            alert('購物車是空的，請先選擇餐點！');
-            return;
-        }
+        if (cart.length === 0) { alert('購物車是空的，請先選擇餐點！'); return; }
         let phone = prompt('請輸入您的【完整 10 碼電話號碼】（後四碼將作為取餐編號）：');
         if (phone === null) return;
         phone = phone.trim();
-        if (phone.length !== 10 || isNaN(phone)) {
-            alert('格式錯誤！請務必輸入正確的 10 位數字電話號碼。');
-            return;
-        }
+        if (phone.length !== 10 || isNaN(phone)) { alert('格式錯誤！請務必輸入正確的 10 位數字電話號碼。'); return; }
         submitOrder(phone);
     }
 
     function submitOrder(phone) {
         let total = parseInt(document.getElementById('total-amount').innerText) || 0;
-        let formattedItems = cart.map(item => ({
-            name: `${item.name} (${item.spec})`,
-            price: Number(item.price),
-            quantity: Number(item.quantity)
-        }));
+        let formattedItems = cart.map(item => ({ name: `${item.name} (${item.spec})`, price: Number(item.price), quantity: Number(item.quantity) }));
+        let orderData = { table: String(tableNumber), phone: String(phone), items: formattedItems, total: Number(total) };
 
-        let orderData = {
-            table: String(tableNumber),
-            phone: String(phone),
-            items: formattedItems,
-            total: Number(total)
-        };
-
-        fetch('/api/order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData)
-        })
+        fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                loadTrackerView(data.order_id);
-            } else {
-                alert('送出失敗：' + (data.message || '未知錯誤'));
-            }
-        })
-        .catch(err => {
-            alert('網路或伺服器異常，請稍後再試');
+            if (data.success) { loadTrackerView(data.order_id); }
+            else { alert('送出失敗：' + (data.message || '未知錯誤')); }
         });
     }
 
@@ -628,14 +546,13 @@
                 let order = data.order;
                 document.getElementById('order-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
+                document.getElementById('acknowledge-btn').style.display = 'none';
                 document.getElementById('finish-order-btn').style.display = 'none';
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
                 
                 let itemsHtml = '';
-                order.food_list.forEach(i => {
-                    itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`;
-                });
+                order.food_list.forEach(i => { itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`; });
                 document.getElementById('track-items').innerHTML = itemsHtml;
                 startStatusPolling();
             }
@@ -644,18 +561,12 @@
 
     async function searchMyOrder() {
         let phone4 = document.getElementById('search-phone4').value.trim();
-        if (phone4.length !== 4 || isNaN(phone4)) {
-            alert('請輸入正確的電話後 4 碼！');
-            return;
-        }
+        if (phone4.length !== 4 || isNaN(phone4)) { alert('請輸入正確的電話後 4 碼！'); return; }
         try {
             let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
             let data = await res.json();
             if (data.success) {
-                if (data.order.status === 'completed') {
-                    alert('這筆訂單已經完成取餐囉！');
-                    return;
-                }
+                if (data.order.status === 'completed') { alert('這筆訂單已經完成取餐囉！'); return; }
                 loadTrackerView(data.order.id);
             } else { alert('找不到該末四碼對應的進行中訂單'); }
         } catch (e) { alert('查詢發生錯誤'); }
@@ -684,6 +595,7 @@
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已完成，請至櫃檯憑電話後四碼取餐！';
                         if(cancelBtn) cancelBtn.style.display = 'none';
+                        document.getElementById('acknowledge-btn').style.display = 'block';
                         document.getElementById('finish-order-btn').style.display = 'block';
 
                         if (!isCompletedAlertTriggered) {
@@ -699,22 +611,14 @@
         }, 3000);
     }
 
-    function cancelMyOrder() {
-        if (!confirm('確定要取消這筆訂單嗎？')) return;
-        fetch('/api/order/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: currentOrderId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert('訂單已成功取消');
-                finishOrder();
-            } else { alert('取消失敗：' + data.message); }
-        });
+    // 按下「了解，過去取餐」按鈕：只停止音效，保留明細與狀態畫面
+    function acknowledgeOrder() {
+        alertAudio.pause();
+        alertAudio.currentTime = 0;
+        document.getElementById('acknowledge-btn').style.display = 'none';
     }
 
+    // 按下「取餐完成」按鈕：清空購物車，跳回點餐頁面
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
@@ -726,6 +630,16 @@
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         document.getElementById('search-phone4').value = '';
+    }
+
+    function cancelMyOrder() {
+        if (!confirm('確定要取消這筆訂單嗎？')) return;
+        fetch('/api/order/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) { alert('訂單已成功取消'); finishOrder(); }
+            else { alert('取消失敗：' + data.message); }
+        });
     }
 </script>
 </body>
