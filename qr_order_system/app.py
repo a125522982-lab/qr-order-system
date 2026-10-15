@@ -53,15 +53,16 @@ default_menu = {
     "212": {"name": "雞腿滿足桶", "price": 399, "is_sold_out": False},
 }
 
-# 預設每週營業時間 (預設 11:00 至 22:00)
+# 預設全天開放營業（00:00 - 23:59），全手動/全自動皆可配合
 default_hours = {
-    "Mon": {"open": "11:00", "close": "22:00", "enabled": True},
-    "Tue": {"open": "11:00", "close": "22:00", "enabled": True},
-    "Wed": {"open": "11:00", "close": "22:00", "enabled": True},
-    "Thu": {"open": "11:00", "close": "22:00", "enabled": True},
-    "Fri": {"open": "11:00", "close": "23:00", "enabled": True},
-    "Sat": {"open": "11:00", "close": "23:00", "enabled": True},
-    "Sun": {"open": "11:00", "close": "22:00", "enabled": True},
+    "force_open": True,  # 預設強制開啟營業
+    "Mon": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Tue": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Wed": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Thu": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Fri": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Sat": {"open": "00:00", "close": "23:59", "enabled": True},
+    "Sun": {"open": "00:00", "close": "23:59", "enabled": True},
 }
 
 ORDERS = []
@@ -100,6 +101,8 @@ def load_hours():
         with open(HOURS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if data and isinstance(data, dict):
+                if "force_open" not in data:
+                    data["force_open"] = True
                 return data
     except Exception:
         pass
@@ -125,22 +128,25 @@ def customer_menu():
     table = request.args.get("table", "1")
     hours = load_hours()
     
-    # 檢查當前時間是否在營業時間內
-    now = datetime.now()
-    day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-    today_key = day_map[now.weekday()]
-    
-    today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "24:00"})
-    
-    is_open = True
-    if not today_setting.get("enabled", True):
-        is_open = False
+    # 若開啓「強制營業」，直接開放點餐
+    if hours.get("force_open", True):
+        is_open = True
+        today_setting = {"open": "全天", "close": "開放"}
     else:
-        current_time_str = now.strftime("%H:%M")
-        open_time = today_setting.get("open", "00:00")
-        close_time = today_setting.get("close", "24:00")
-        if not (open_time <= current_time_str <= close_time):
+        now = datetime.now()
+        day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+        today_key = day_map[now.weekday()]
+        today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "23:59"})
+        
+        is_open = True
+        if not today_setting.get("enabled", True):
             is_open = False
+        else:
+            current_time_str = now.strftime("%H:%M")
+            open_time = today_setting.get("open", "00:00")
+            close_time = today_setting.get("close", "23:59")
+            if not (open_time <= current_time_str <= close_time):
+                is_open = False
 
     return render_template("customer.html", table=table, menu=load_menu(), is_open=is_open, hours=today_setting)
 
@@ -197,7 +203,6 @@ def admin_page():
     )
 
 
-# 儲存營業時間設定 API
 @app.route("/api/hours/save", methods=["POST"])
 def update_hours():
     try:
