@@ -51,33 +51,11 @@ def customer_menu():
 def admin_page():
     try:
         current_menu = load_menu()
-        
-        # 安全清洗 ORDERS 與 COMPLETED_ORDERS，確保所有欄位完整且格式正確
-        safe_orders = []
-        for o in ORDERS:
-            if isinstance(o, dict):
-                safe_orders.append({
-                    "id": str(o.get("id", time.time())),
-                    "table": str(o.get("table", "未知")),
-                    "items": o.get("items", []),
-                    "total": int(o.get("total", 0))
-                })
-
-        safe_completed = []
-        for o in COMPLETED_ORDERS:
-            if isinstance(o, dict):
-                safe_completed.append({
-                    "id": str(o.get("id", time.time())),
-                    "table": str(o.get("table", "未知")),
-                    "items": o.get("items", []),
-                    "total": int(o.get("total", 0))
-                })
-
         return render_template(
             "admin.html",
             menu=current_menu,
-            orders=safe_orders,
-            completed_orders=safe_completed,
+            orders=ORDERS,
+            completed_orders=COMPLETED_ORDERS,
         )
     except Exception as e:
         print("後台渲染發生例外:", str(e))
@@ -104,13 +82,21 @@ def place_order():
 
         raw_items = data.get("items", [])
         cleaned_items = []
+        
+        # 強制解析任何格式的品項，絕不漏接
         if isinstance(raw_items, list):
             for item in raw_items:
                 if isinstance(item, dict):
                     cleaned_items.append({
-                        "name": str(item.get("name", "未知餐點")),
+                        "name": str(item.get("name", item.get("title", "未知餐點"))),
                         "price": int(item.get("price", 0)),
-                        "quantity": int(item.get("quantity", 1)),
+                        "quantity": int(item.get("quantity", item.get("qty", 1))),
+                    })
+                elif isinstance(item, str):
+                    cleaned_items.append({
+                        "name": item,
+                        "price": 0,
+                        "quantity": 1,
                     })
 
         new_order = {
@@ -121,6 +107,7 @@ def place_order():
         }
 
         ORDERS.append(new_order)
+        print("成功收到並解析訂單:", new_order)
         return jsonify({"success": True, "message": "ok"})
     except Exception as e:
         print("訂單接收報錯:", str(e))
