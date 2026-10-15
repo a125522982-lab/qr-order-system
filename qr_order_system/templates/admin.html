@@ -23,9 +23,12 @@
 <body>
 <div class="container">
     <div class="status-bar">
-        <span>🟢 <b>即時連線中</b>：未接受訂單將持續提醒響鈴</span>
+        <span>🟢 <b>即時連線中</b>：未接受訂單將持續播放您的提示音</span>
         <button onclick="enableSound()" style="background: #17a2b8; font-size: 12px;">點此啟用提示音</button>
     </div>
+
+    <!-- 內建您的音檔播放器物件 -->
+    <audio id="alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" preload="auto"></audio>
 
     <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
     
@@ -138,52 +141,36 @@
 
 <script>
     let soundEnabled = false;
+    const soundEl = document.getElementById('alert-sound');
+
     function enableSound() {
         soundEnabled = true;
-        playDingDong();
-        alert('提示音已啟用！');
+        soundEl.play().then(() => {
+            soundEl.pause();
+            soundEl.currentTime = 0;
+            alert('提示音已成功啟用！');
+        }).catch(e => {
+            console.log("解鎖聲音失敗", e);
+            alert('啟用失敗，請再點擊一次');
+        });
     }
 
-    // 播放好聽的雙音階「叮咚」提示音 (高音起伏，溫和悅耳)
-    function playDingDong() {
+    // 播放您的自訂音檔
+    function playCustomSound() {
         if (!soundEnabled) return;
         try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 第一聲 (叮)
-            const osc1 = audioCtx.createOscillator();
-            const gain1 = audioCtx.createGain();
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-            gain1.gain.setValueAtTime(0.15, audioCtx.currentTime);
-            gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
-            osc1.connect(gain1);
-            gain1.connect(audioCtx.destination);
-            osc1.start();
-            osc1.stop(audioCtx.currentTime + 0.4);
-
-            // 第二聲 (咚) - 0.2秒後
-            setTimeout(() => {
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
-                gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
-                osc2.connect(gain2);
-                gain2.connect(audioCtx.destination);
-                osc2.start();
-                osc2.stop(audioCtx.currentTime + 0.5);
-            }, 200);
-
+            soundEl.currentTime = 0;
+            soundEl.play().catch(err => {
+                console.log("播放被瀏覽器阻擋:", err);
+            });
         } catch (e) {
-            console.log("音效播放失敗", e);
+            console.log("音檔播放錯誤", e);
         }
     }
 
     let lastPendingCount = {{ orders|length }};
 
-    // 每 3 秒自動輪詢更新後台狀態
+    // 每 3 秒自動輪詢檢查
     setInterval(async () => {
         try {
             let res = await fetch('/admin');
@@ -194,15 +181,15 @@
             
             let currentPendingCount = doc.querySelectorAll('#orders-list .order-card').length;
 
-            // 如果待處理訂單數量增加，或者只要「有待處理訂單且尚未被清空」，就會持續響鈴提醒！
+            // 只要有待處理訂單，就會持續播放您的音檔提醒
             if (currentPendingCount > 0) {
                 if (currentPendingCount > lastPendingCount || soundEnabled) {
-                    playDingDong();
+                    playCustomSound();
                 }
             }
             lastPendingCount = currentPendingCount;
 
-            // 即時替換三個區塊的 HTML 內容，保持畫面同步
+            // 即時更新三個區塊
             document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
             document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
             document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
@@ -212,7 +199,6 @@
         }
     }, 3000);
 
-    // 點擊「接受訂單」
     function acceptOrder(orderId) {
         fetch('/api/order/accept', {
             method: 'POST',
@@ -229,7 +215,6 @@
         });
     }
 
-    // 點擊「完成訂單」
     function completeOrder(orderId) {
         fetch('/api/order/complete', {
             method: 'POST',
