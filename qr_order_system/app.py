@@ -82,3 +82,24 @@ def place_order():
     ), 500
 if __name__ == "__main__":
     app.run(debug=True)
+# 已完成的訂單歷史紀錄
+COMPLETED_ORDERS = []
+
+
+@app.route("/api/order/complete", methods=["POST"])
+def complete_order():
+  try:
+    data = request.get_json(silent=True)
+    if not data or "index" not in data:
+      return jsonify({"success": False, "message": "無效的索引"}), 400
+
+    idx = int(data["index"])
+    if 0 <= idx < len(ORDERS):
+      # 從進行中訂單移除，並加入已完成訂單
+      finished = ORDERS.pop(idx)
+      COMPLETED_ORDERS.append(finished)
+      return jsonify({"success": True})
+
+    return jsonify({"success": False, "message": "找不到該筆訂單"}), 404
+  except Exception as e:
+    return jsonify({"success": False, "message": str(e)}), 500
