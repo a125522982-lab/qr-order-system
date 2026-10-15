@@ -34,7 +34,7 @@
                         <div>
                             <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
-                            {% if order.items and order.items is iterable and order.items is not string %}
+                            {% if order.items %}
                                 {% for i in order.items %}
                                     {% if i is mapping %}
                                         <span>{{ i.name }} x {{ i.quantity }}</span>{% if not loop.last %}, {% endif %}
@@ -43,7 +43,7 @@
                                     {% endif %}
                                 {% endfor %}
                             {% else %}
-                                無品項資料
+                                <span>{{ order.items }}</span>
                             {% endif %}
                         </div>
                         <div>
@@ -65,7 +65,7 @@
                 {% for order in completed_orders %}
                     <div class="completed-card">
                         <b>{{ order.table }} 號桌</b> | 總金額: ${{ order.total }} | 
-                        {% if order.items and order.items is iterable and order.items is not string %}
+                        {% if order.items %}
                             {% for i in order.items %}
                                 {% if i is mapping %}
                                     {{ i.name }} x {{ i.quantity }}{% if not loop.last %}, {% endif %}
@@ -74,7 +74,7 @@
                                 {% endif %}
                             {% endfor %}
                         {% else %}
-                            無品項資料
+                            {{ order.items }}
                         {% endif %}
                     </div>
                 {% endfor %}
