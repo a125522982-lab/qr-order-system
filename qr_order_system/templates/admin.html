@@ -20,6 +20,8 @@
         .btn-danger { background: #d90429; color: white; }
         .btn-primary { background: #17a2b8; color: white; }
         
+        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; font-size: 20px; font-weight: bold; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        
         .hours-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .hours-row label { width: 60px; font-weight: bold; }
         
@@ -31,10 +33,17 @@
     <h1>🍗 酷嗑斯美式炸雞 - 商家後台管理</h1>
     <p><a href="/menu?table=1" target="_blank">🔗 前端點餐頁面測試</a></p>
 
-    <!-- 1. 即時訂單列表（移至最上方） -->
+    <!-- 整體營業額統計 -->
+    <div class="revenue-box">
+        <span>💰 今日累積總營業額：</span>
+        <span style="font-size: 26px; color: #155724;">${{ total_revenue }}</span>
+    </div>
+
+    <!-- 1. 即時訂單列表（置頂：待處理、製作中、已完成） -->
     <div class="card" style="border: 2px solid #2b9348;">
         <h2>📋 即時訂單列表</h2>
         
+        <!-- 待處理訂單 -->
         <h3>⏳ 待處理訂單</h3>
         <table>
             <thead>
@@ -70,6 +79,7 @@
             </tbody>
         </table>
 
+        <!-- 製作中訂單 -->
         <h3 style="margin-top: 30px;">🔥 製作中訂單</h3>
         <table>
             <thead>
@@ -102,6 +112,37 @@
                 </tr>
                 {% else %}
                 <tr><td colspan="6" style="text-align: center; color: #777;">目前沒有製作中的訂單</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 已完成訂單 -->
+        <h3 style="margin-top: 30px;">✅ 已完成訂單紀錄</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>桌號</th>
+                    <th>電話末四碼</th>
+                    <th>餐點內容與規格</th>
+                    <th>總金額</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in completed_orders %}
+                <tr>
+                    <td>{{ o.table }} 號桌</td>
+                    <td><b>{{ o.phone_last4 }}</b></td>
+                    <td>
+                        <ul style="margin: 0; padding-left: 15px;">
+                            {% for item in o.food_list %}
+                            <li>{{ item.name }} x {{ item.quantity }}</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td style="font-weight: bold;">${{ o.total }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" style="text-align: center; color: #777;">目前尚無已完成訂單</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -155,190 +196,4 @@
     <!-- 4. 菜單品項售罄管理（可縮小折疊） -->
     <div class="card">
         <details>
-            <summary>🍔 菜單品項售罄管理（點擊展開 / 收合）</summary>
-            <table>
-                <thead>
-                    <tr>
-                        <th>品名</th>
-                        <th>價格</th>
-                        <th>目前狀態</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for id, item in menu.items() %}
-                    <tr>
-                        <td>{{ item.name }}</td>
-                        <td>${{ item.price }}</td>
-                        <td>
-                            {% if item.is_sold_out %}
-                                <span style="color: #d90429; font-weight: bold;">已售罄</span>
-                            {% else %}
-                                <span style="color: #2b9348; font-weight: bold;">供應中</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <button onclick="toggleSoldOut('{{ id }}')" class="btn-primary" style="padding: 4px 8px; font-size: 12px;">切換狀態</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </details>
-    </div>
-</div>
-
-<!-- 新訂單音效提醒 -->
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
-
-<script>
-    let lastOrderCount = {{ orders | length }};
-    const adminAlertAudio = document.getElementById('admin-alert-sound');
-
-    // 允許點擊頁面解鎖音效權限
-    document.addEventListener('click', () => {
-        if (adminAlertAudio.paused) { adminAlertAudio.load(); }
-    }, { once: true });
-
-    async function toggleForceClose() {
-        let isChecked = document.getElementById('force-close-chk').checked;
-        let hoursData = gatherHoursData();
-        hoursData.force_close = isChecked;
-
-        let res = await fetch('/api/hours/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hoursData)
-        });
-        let data = await res.json();
-        if (data.success) {
-            alert(isChecked ? '已切換為強制打烊狀態！' : '已恢復營業狀態！');
-        } else {
-            alert('操作失敗：' + data.message);
-        }
-    }
-
-    function gatherHoursData() {
-        let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        let data = { force_close: document.getElementById('force-close-chk').checked };
-        days.forEach(d => {
-            data[d] = {
-                enabled: document.getElementById(`${d}_en`).checked,
-                open: document.getElementById(`${d}_open`).value,
-                close: document.getElementById(`${d}_close`).value
-            };
-        });
-        return data;
-    }
-
-    async function saveHours(event) {
-        event.preventDefault();
-        let hoursData = gatherHoursData();
-        let res = await fetch('/api/hours/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hoursData)
-        });
-        let data = await res.json();
-        if (data.success) {
-            alert('營業時間儲存成功！');
-            location.reload();
-        } else {
-            alert('儲存失敗：' + data.message);
-        }
-    }
-
-    async function addPromoItem(event) {
-        event.preventDefault();
-        let name = document.getElementById('promo-name').value.trim();
-        let price = document.getElementById('promo-price').value.trim();
-
-        let res = await fetch('/api/promo/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, price })
-        });
-        let data = await res.json();
-        if (data.success) {
-            alert('優惠品項新增成功！');
-            location.reload();
-        } else {
-            alert('新增失敗：' + data.message);
-        }
-    }
-
-    async function deletePromo(itemId) {
-        if (!confirm('確定要刪除這個優惠品項嗎？')) return;
-        let res = await fetch('/api/promo/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
-        let data = await res.json();
-        if (data.success) {
-            alert('已成功刪除');
-            location.reload();
-        } else {
-            alert('刪除失敗：' + data.message);
-        }
-    }
-
-    async function acceptOrder(orderId) {
-        let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
-        if (!estTime) return;
-        let res = await fetch('/api/order/accept', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId, est_time: estTime })
-        });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
-    }
-
-    async function completeOrder(orderId) {
-        let res = await fetch('/api/order/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
-    }
-
-    async function cancelOrder(orderId) {
-        if (!confirm('確定取消此訂單？')) return;
-        let res = await fetch('/api/order/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
-    }
-
-    async function toggleSoldOut(itemId) {
-        let res = await fetch('/api/menu/toggle_soldout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
-    }
-
-    // 每 5 秒自動在背景檢查是否有新訂單，若有則播放提示音並重新整理
-    setInterval(async () => {
-        if (document.activeElement.tagName === "INPUT") return; // 避免打字時重新整理
-        try {
-            let res = await fetch('/admin');
-            let text = await res.text();
-            // 透過簡單檢查目前頁面的待處理數量，或者直接讓後台定期重新整理
-        } catch(e) {}
-    }, 5000);
-</script>
-</body>
-</html>
+            <summary>🍔 菜單品項售罄管理（點擊展開 /
