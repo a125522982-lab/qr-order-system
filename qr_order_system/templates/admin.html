@@ -13,14 +13,17 @@
         button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button.accept { background: #ffc107; color: #333; }
         button.success { background: #28a745; }
+        button.danger { background: #dc3545; }
         button.soldout-btn { background: #6c757d; }
         button.soldout-on { background: #dc3545; }
         button:hover { opacity: 0.9; }
         .order-card { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .accepted-card { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #0c5460; }
         .completed-card { background: #e2e3e5; border: 1px solid #d6d8db; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #383d41; }
+        .cancelled-card { background: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #721c24; }
         .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .badge-phone { background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+        .stats-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -33,6 +36,22 @@
 
     <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
     
+    <!-- 今日營收與品項統計區塊 -->
+    <div class="stats-box">
+        <h3>📊 今日營收與食材銷售統計</h3>
+        <p style="font-size: 18px;">💰 今日總營收：<b style="color: #2e7d32;">${{ total_revenue }}</b></p>
+        <p><b>各品項售出數量統計：</b></p>
+        {% if item_stats %}
+            <ul style="margin: 0; padding-left: 20px; display: flex; flex-wrap: wrap; gap: 15px;">
+                {% for name, qty in item_stats.items() %}
+                    <li>{{ name }}：<b>{{ qty }} 份</b></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p style="color: #777; margin: 0;">目前尚未有已完成的訂單統計</p>
+        {% endif %}
+    </div>
+
     <!-- 1. 即時進來的訂單 -->
     <div class="section">
         <h2>📦 1. 即時進來的訂單 (待處理)</h2>
@@ -51,8 +70,16 @@
                                 <span>無品項資料</span>
                             {% endif %}
                         </div>
-                        <div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <select id="est-time-{{ order.id }}" style="padding: 5px;">
+                                <option value="10分鐘">10分鐘</option>
+                                <option value="15分鐘" selected>15分鐘</option>
+                                <option value="20分鐘">20分鐘</option>
+                                <option value="25分鐘">25分鐘</option>
+                                <option value="30分鐘">30分鐘</option>
+                            </select>
                             <button class="accept" onclick="acceptOrder('{{ order.id }}')">接受訂單</button>
+                            <button class="danger" onclick="cancelOrder('{{ order.id }}')">取消</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -70,7 +97,7 @@
                 {% for order in accepted_orders %}
                     <div class="accepted-card">
                         <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> | 預估: <b>{{ order.est_time }}</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -80,8 +107,9 @@
                                 <span>無品項資料</span>
                             {% endif %}
                         </div>
-                        <div>
+                        <div style="display: flex; gap: 8px;">
                             <button class="success" onclick="completeOrder('{{ order.id }}')">完成訂單</button>
+                            <button class="danger" onclick="cancelOrder('{{ order.id }}')">取消</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -110,6 +138,22 @@
                 {% endfor %}
             {% else %}
                 <p style="color: #777;">尚無已完成的訂單</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 4. 已取消訂單 -->
+    <div class="section">
+        <h2>❌ 4. 已取消訂單</h2>
+        <div id="cancelled-list">
+            {% if cancelled_orders %}
+                {% for order in cancelled_orders %}
+                    <div class="cancelled-card">
+                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 總金額: ${{ order.total }} (已取消)
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #777;">尚無取消的訂單</p>
             {% endif %}
         </div>
     </div>
@@ -159,7 +203,6 @@
 <script>
     const soundEl = document.getElementById('alert-sound');
 
-    // 頁面載入後自動嘗試解鎖音訊並常開
     document.addEventListener('click', () => {
         if (soundEl.paused) {
             soundEl.load();
@@ -169,9 +212,7 @@
     function playCustomSound() {
         try {
             soundEl.currentTime = 0;
-            soundEl.play().catch(err => {
-                console.log("等待首次互動後即可自動撥放音效");
-            });
+            soundEl.play().catch(err => {});
         } catch (e) {}
     }
 
@@ -187,15 +228,14 @@
             
             let currentPendingCount = doc.querySelectorAll('#orders-list .order-card').length;
 
-            // 只要有待處理訂單，就會持續播放提示音
             if (currentPendingCount > 0) {
-                playCustomSound();
+                if (currentPendingCount > lastPendingCount || soundEnabled) { // soundEnabled 兼容
+                    playCustomSound();
+                }
             }
             lastPendingCount = currentPendingCount;
 
-            document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
-            document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
-            document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
+            document.body.innerHTML = doc.body.innerHTML; // 全面同步後台統計與清單
 
         } catch (err) {}
     }, 3000);
@@ -208,19 +248,17 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('操作失敗：' + data.message);
-            }
+            if (data.success) location.reload();
+            else alert('操作失敗：' + data.message);
         });
     }
 
     function acceptOrder(orderId) {
+        let estTime = document.getElementById('est-time-' + orderId).value;
         fetch('/api/order/accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
+            body: JSON.stringify({ order_id: orderId, est_time: estTime })
         })
         .then(res => res.json())
         .then(data => {
@@ -237,6 +275,20 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) location.reload();
+        });
+    }
+
+    function cancelOrder(orderId) {
+        if (!confirm('確定要取消這筆訂單嗎？')) return;
+        fetch('/api/order/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+            else alert('取消失敗：' + data.message);
         });
     }
 </script>
