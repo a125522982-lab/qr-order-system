@@ -1,416 +1,60 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <title>店家後台管理 - 酷嗑斯美式炸雞</title>
-    <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-        .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .section { margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background: #f2f2f2; }
-        button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button.accept { background: #ffc107; color: #333; }
-        button.success { background: #28a745; }
-        button.danger { background: #dc3545; }
-        button.soldout-btn { background: #6c757d; }
-        button.soldout-on { background: #dc3545; }
-        button:hover { opacity: 0.9; }
-        .order-card { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .accepted-card { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #0c5460; }
-        .completed-card { background: #e2e3e5; border: 1px solid #d6d8db; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #383d41; }
-        .cancelled-card { background: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #721c24; }
-        .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .badge-phone { background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 14px; }
-        .prefs-tag { background: #ff7043; color: white; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-left: 5px; }
-        .stats-box, .hours-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        .hours-row { display: flex; gap: 15px; align-items: center; margin-bottom: 8px; }
-
-        #print-ticket { display: none; }
-        @media print {
-            body * { visibility: hidden; }
-            #print-ticket, #print-ticket * { visibility: visible; }
-            #print-ticket { display: block; position: absolute; left: 0; top: 0; width: 100%; font-size: 18px; padding: 15px; background: white; color: black; }
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="status-bar">
-        <span>🟢 <b>即時連線中</b>：只要有未接受的訂單，將持續播放提示音提醒</span>
-    </div>
-
-    <audio id="alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" preload="auto"></audio>
-
-    <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
+<!-- 請在後台適當位置（例如選單管理上方）加入以下優惠專區管理介面 -->
+<div class="admin-section" style="background: #fff9db; border: 1px solid #fcc419; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <h3>🔥 新增優惠專區品項</h3>
+    <form onsubmit="addPromoItem(event)" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <input type="text" id="promo-name" placeholder="優惠名稱 (例如: 雙人炸雞特餐)" required style="padding: 8px; flex: 2; border: 1px solid #ccc; border-radius: 4px;">
+        <input type="number" id="promo-price" placeholder="金額 ($)" required style="padding: 8px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
+        <button type="submit" style="background: #f59f00; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">新增至優惠專區</button>
+    </form>
     
-    <!-- 營業時間設定區塊 -->
-    <div class="hours-box">
-        <h3>⏰ 客戶端點餐營業時間設定</h3>
-        <div style="background: #fff; padding: 12px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #f5c6cb;">
-            <label style="font-size: 16px; font-weight: bold; cursor: pointer; color: #721c24;">
-                <input type="checkbox" id="force-close-check" {% if hours.force_close %}checked{% endif %} style="transform: scale(1.3); margin-right: 8px;">
-                🔴 <b>無視下表時間，強制關閉點餐（暫停營業）</b>
-            </label>
-        </div>
-        <div id="hours-form">
-            {% set day_names = {'Mon': '星期一', 'Tue': '星期二', 'Wed': '星期三', 'Thu': '星期四', 'Fri': '星期五', 'Sat': '星期六', 'Sun': '星期日'} %}
-            {% for code, name in day_names.items() %}
-                <div class="hours-row">
-                    <label style="width: 80px; font-weight: bold;">{{ name }}</label>
-                    <label><input type="checkbox" id="enabled-{{ code }}" {% if hours[code] is defined and hours[code].enabled %}checked{% endif %}> 開放營業</label>
-                    <span>從</span>
-                    <input type="time" id="open-{{ code }}" value="{{ hours[code].open if hours[code] is defined else '11:00' }}">
-                    <span>到</span>
-                    <input type="time" id="close-{{ code }}" value="{{ hours[code].close if hours[code] is defined else '22:00' }}">
-                </div>
+    <div style="margin-top: 15px;">
+        <b>現有優惠品項清單：</b>
+        <ul id="promo-list" style="margin: 5px 0; padding-left: 20px;">
+            {% for id, item in menu.items() %}
+                {% if item.get('category') == 'promo' %}
+                    <li style="margin-bottom: 5px;">
+                        {{ item.name }} - ${{ item.price }} 
+                        <button onclick="deletePromo('{{ id }}')" style="background: #d90429; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 10px; cursor: pointer;">刪除</button>
+                    </li>
+                {% endif %}
             {% endfor %}
-            <button onclick="saveHoursSetting()" style="background: #28a745; margin-top: 10px;">儲存營業時間設定</button>
-        </div>
+        </ul>
     </div>
-
-    <!-- 今日營收與品項統計區塊 -->
-    <div class="stats-box" id="stats-section">
-        <h3>📊 今日營收與食材銷售統計</h3>
-        <p style="font-size: 18px;">💰 今日總營收：<b style="color: #2e7d32;">${{ total_revenue }}</b></p>
-        <p><b>各品項售出數量統計：</b></p>
-        {% if item_stats %}
-            <ul style="margin: 0; padding-left: 20px; display: flex; flex-wrap: wrap; gap: 15px;">
-                {% for name, qty in item_stats.items() %}
-                    <li>{{ name }}：<b>{{ qty }} 份</b></li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p style="color: #777; margin: 0;">目前尚未有已完成的訂單統計</p>
-        {% endif %}
-    </div>
-
-    <!-- 1. 即時進來的訂單 -->
-    <div class="section">
-        <h2>📦 1. 即時進來的訂單 (待處理)</h2>
-        <div id="orders-list">
-            {% if orders %}
-                {% for order in orders %}
-                    <div class="order-card" id="order-{{ order.id }}" 
-                         data-table="{{ order.table }}" 
-                         data-phone="{{ order.phone_last4 }}" 
-                         data-spicy="{{ order.spicy }}" 
-                         data-pepper="{{ order.pepper }}" 
-                         data-total="{{ order.total }}"
-                         data-items='{{ order.food_list | tojson }}'>
-                        <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> 
-                            <span class="prefs-tag">🌶️ {{ order.spicy }}</span>
-                            <span class="prefs-tag" style="background: #607d8b;">🧂 胡椒: {{ order.pepper }}</span>
-                            - 總金額: <b>${{ order.total }}</b><br>
-                            內容：
-                            {% if order.food_list is iterable and order.food_list is not string %}
-                                {% for item in order.food_list %}
-                                    <span>{{ item.name }} x {{ item.quantity }}</span>{% if not loop.last %}, {% endif %}
-                                {% endfor %}
-                            {% else %}
-                                <span>無品項資料</span>
-                            {% endif %}
-                        </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <select id="est-time-{{ order.id }}" style="padding: 5px;">
-                                <option value="10分鐘">10分鐘</option>
-                                <option value="15分鐘" selected>15分鐘</option>
-                                <option value="20分鐘">20分鐘</option>
-                                <option value="25分鐘">25分鐘</option>
-                                <option value="30分鐘">30分鐘</option>
-                            </select>
-                            <button class="accept" onclick="acceptAndPrintOrder('{{ order.id }}')">接受並出單</button>
-                            <button class="danger" onclick="cancelOrder('{{ order.id }}')">取消</button>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p style="color: #777;" id="no-pending">目前沒有新進訂單</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- 2. 已經接受的訂單 -->
-    <div class="section">
-        <h2>🔥 2. 已經接受的訂單 (製作中)</h2>
-        <div id="accepted-list">
-            {% if accepted_orders %}
-                {% for order in accepted_orders %}
-                    <div class="accepted-card">
-                        <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> | 預估: <b>{{ order.est_time }}</b>
-                            <span class="prefs-tag">🌶️ {{ order.spicy }}</span>
-                            <span class="prefs-tag" style="background: #607d8b;">🧂 胡椒: {{ order.pepper }}</span>
-                            - 總金額: <b>${{ order.total }}</b><br>
-                            內容：
-                            {% if order.food_list is iterable and order.food_list is not string %}
-                                {% for item in order.food_list %}
-                                    <span>{{ item.name }} x {{ item.quantity }}</span>{% if not loop.last %}, {% endif %}
-                                {% endfor %}
-                            {% else %}
-                                <span>無品項資料</span>
-                            {% endif %}
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="success" onclick="completeOrder('{{ order.id }}')">完成訂單</button>
-                            <button class="danger" onclick="cancelOrder('{{ order.id }}')">取消</button>
-                        </div>
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p style="color: #777;">目前沒有製作中的訂單</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- 3. 已完成歷史訂單 -->
-    <div class="section">
-        <h2>✅ 3. 已完成歷史訂單</h2>
-        <div id="completed-list">
-            {% if completed_orders %}
-                {% for order in completed_orders %}
-                    <div class="completed-card">
-                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 🌶️ {{ order.spicy }} | 🧂 胡椒: {{ order.pepper }} | ${{ order.total }} | 
-                        {% if order.food_list is iterable and order.food_list is not string %}
-                            {% for item in order.food_list %}
-                                {{ item.name }} x {{ item.quantity }}{% if not loop.last %}, {% endif %}
-                            {% endfor %}
-                        {% else %}
-                            無品項資料
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p style="color: #777;">尚無已完成的訂單</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- 4. 已取消訂單 -->
-    <div class="section">
-        <h2>❌ 4. 已取消訂單</h2>
-        <div id="cancelled-list">
-            {% if cancelled_orders %}
-                {% for order in cancelled_orders %}
-                    <div class="cancelled-card">
-                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 總金額: ${{ order.total }} (已取消)
-                    </div>
-                {% endfor %}
-            {% else %}
-                <p style="color: #777;">尚無取消的訂單</p>
-            {% endif %}
-        </div>
-    </div>
-
-    <hr>
-
-    <!-- 菜單售罄管理 -->
-    <div class="section">
-        <h2>📋 菜單管理與售罄狀態切換</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>編號</th>
-                    <th>品名</th>
-                    <th>價格</th>
-                    <th>當前狀態</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody id="menu-table-body">
-                {% for id, item in menu.items() %}
-                <tr>
-                    <td>{{ id }}</td>
-                    <td>{{ item.name }}</td>
-                    <td>${{ item.price }}</td>
-                    <td>
-                        {% if item.is_sold_out %}
-                            <span style="color: red; font-weight: bold;">🔴 已售罄</span>
-                        {% else %}
-                            <span style="color: green; font-weight: bold;">🟢 供應中</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if item.is_sold_out %}
-                            <button class="soldout-on" onclick="toggleSoldOut('{{ id }}')">改為供應</button>
-                        {% else %}
-                            <button class="soldout-btn" onclick="toggleSoldOut('{{ id }}')">設為售罄</button>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div id="print-ticket">
-    <h2 style="text-align: center; margin: 0;">🍗 酷嗑斯美式炸雞 🍗</h2>
-    <h3 style="text-align: center; margin: 5px 0 15px 0;">【廚房出單小票】</h3>
-    <hr style="border: 1px dashed black;">
-    <p><b>桌號：</b> <span id="p-table"></span> 號桌</p>
-    <p><b>取餐末四碼：</b> <span id="p-phone" style="font-size: 24px; color: red;"></span></p>
-    <p><b>口味偏好：</b> <span id="p-spicy" style="font-size: 20px;"></span> | <b>胡椒：</b> <span id="p-pepper"></span></p>
-    <hr style="border: 1px dashed black;">
-    <p><b>點餐內容：</b></p>
-    <ul id="p-items" style="font-size: 18px; padding-left: 20px;"></ul>
-    <hr style="border: 1px dashed black;">
-    <p style="text-align: right; font-size: 18px;"><b>總金額：$<span id="p-total"></span></b></p>
-    <p style="text-align: center; font-size: 14px; margin-top: 20px;">請將本單貼於紙袋或餐盒上</p>
 </div>
 
 <script>
-    const soundEl = document.getElementById('alert-sound');
+    async function addPromoItem(event) {
+        event.preventDefault();
+        let name = document.getElementById('promo-name').value.trim();
+        let price = document.getElementById('promo-price').value.trim();
 
-    document.addEventListener('click', () => {
-        if (soundEl.paused) {
-            soundEl.load();
-        }
-    }, { once: true });
-
-    function playCustomSound() {
-        try {
-            soundEl.currentTime = 0;
-            soundEl.play().catch(err => {});
-        } catch (e) {}
-    }
-
-    setInterval(async () => {
-        try {
-            let res = await fetch('/admin');
-            let text = await res.text();
-            
-            let parser = new DOMParser();
-            let doc = parser.parseFromString(text, 'text/html');
-            
-            let pendingCards = doc.querySelectorAll('#orders-list .order-card');
-            let currentPendingCount = pendingCards.length;
-
-            if (currentPendingCount > 0) {
-                playCustomSound();
-            }
-
-            document.getElementById('stats-section').innerHTML = doc.getElementById('stats-section').innerHTML;
-            document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
-            document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
-            document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
-            document.getElementById('cancelled-list').innerHTML = doc.getElementById('cancelled-list').innerHTML;
-            document.getElementById('menu-table-body').innerHTML = doc.getElementById('menu-table-body').innerHTML;
-
-        } catch (err) {}
-    }, 3000);
-
-    function acceptAndPrintOrder(orderId) {
-        let card = document.getElementById('order-' + orderId);
-        if (card) {
-            let table = card.getAttribute('data-table');
-            let phone = card.getAttribute('data-phone');
-            let spicy = card.getAttribute('data-spicy');
-            let pepper = card.getAttribute('data-pepper');
-            let total = card.getAttribute('data-total');
-            let items = JSON.parse(card.getAttribute('data-items'));
-
-            document.getElementById('p-table').innerText = table;
-            document.getElementById('p-phone').innerText = phone;
-            document.getElementById('p-spicy').innerText = spicy;
-            document.getElementById('p-pepper').innerText = pepper;
-            document.getElementById('p-total').innerText = total;
-
-            let itemsHtml = '';
-            items.forEach(i => {
-                itemsHtml += `<li><b>${i.name}</b> x ${i.quantity}</li>`;
-            });
-            document.getElementById('p-items').innerHTML = itemsHtml;
-
-            window.print();
-        }
-
-        let estSelect = document.getElementById('est-time-' + orderId);
-        let estTime = estSelect ? estSelect.value : '15分鐘';
-        
-        fetch('/api/order/accept', {
+        let res = await fetch('/api/promo/add', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId, est_time: estTime })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) location.reload();
+            body: JSON.stringify({ name, price })
         });
+        let data = await res.json();
+        if (data.success) {
+            alert('優惠品項新增成功！');
+            location.reload();
+        } else {
+            alert('新增失敗：' + data.message);
+        }
     }
 
-    function saveHoursSetting() {
-        let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        let forceClose = document.getElementById('force-close-check').checked;
-        
-        let hoursData = {
-            force_close: forceClose
-        };
-
-        days.forEach(code => {
-            hoursData[code] = {
-                enabled: document.getElementById('enabled-' + code).checked,
-                open: document.getElementById('open-' + code).value,
-                close: document.getElementById('close-' + code).value
-            };
-        });
-
-        fetch('/api/hours/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hoursData)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert('營業時間設定已成功儲存！');
-                location.reload();
-            } else {
-                alert('儲存失敗：' + data.message);
-            }
-        });
-    }
-
-    function toggleSoldOut(itemId) {
-        fetch('/api/menu/toggle_soldout', {
+    async function deletePromo(itemId) {
+        if (!confirm('確定要刪除這個優惠品項嗎？')) return;
+        let res = await fetch('/api/promo/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ item_id: itemId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert('操作失敗：' + data.message);
         });
-    }
-
-    function completeOrder(orderId) {
-        fetch('/api/order/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) location.reload();
-        });
-    }
-
-    function cancelOrder(orderId) {
-        if (!confirm('確定要取消這筆訂單嗎？')) return;
-        fetch('/api/order/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) location.reload();
-            else alert('取消失敗：' + data.message);
-        });
+        let data = await res.json();
+        if (data.success) {
+            alert('已成功刪除');
+            location.reload();
+        } else {
+            alert('刪除失敗：' + data.message);
+        }
     }
 </script>
-</body>
-</html>
