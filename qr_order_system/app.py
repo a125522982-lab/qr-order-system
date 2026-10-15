@@ -54,14 +54,14 @@ default_menu = {
 }
 
 default_hours = {
-    "force_open": True,
-    "Mon": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Tue": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Wed": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Thu": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Fri": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Sat": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Sun": {"open": "00:00", "close": "23:59", "enabled": True},
+    "force_close": False,  # 預設不強制關閉（正常營業）
+    "Mon": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Tue": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Wed": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Thu": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Fri": {"open": "11:00", "close": "23:00", "enabled": True},
+    "Sat": {"open": "11:00", "close": "23:00", "enabled": True},
+    "Sun": {"open": "11:00", "close": "22:00", "enabled": True},
 }
 
 ORDERS = []
@@ -100,8 +100,8 @@ def load_hours():
         with open(HOURS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if data and isinstance(data, dict):
-                if "force_open" not in data:
-                    data["force_open"] = True
+                if "force_close" not in data:
+                    data["force_close"] = False
                 return data
     except Exception:
         pass
@@ -127,24 +127,24 @@ def customer_menu():
     table = request.args.get("table", "1")
     hours = load_hours()
     
-    force_open = bool(hours.get("force_open", True))
+    force_close = bool(hours.get("force_close", False))
     
-    now = datetime.now()
-    day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-    today_key = day_map[now.weekday()]
-    today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "23:59"})
-    
-    if force_open:
-        is_open = True
-        display_hours = {"open": "全天", "close": "開放中"}
+    if force_close:
+        is_open = False
+        display_hours = {"open": "暫停", "close": "休息中"}
     else:
+        now = datetime.now()
+        day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+        today_key = day_map[now.weekday()]
+        today_setting = hours.get(today_key, {"enabled": True, "open": "11:00", "close": "22:00"})
+        
         is_open = True
         if not today_setting.get("enabled", True):
             is_open = False
         else:
             current_time_str = now.strftime("%H:%M")
             open_time = today_setting.get("open", "00:00")
-            close_time = today_setting.get("close", "23:59")
+            close_time = today_setting.get("close", "24:00")
             if not (open_time <= current_time_str <= close_time):
                 is_open = False
         display_hours = today_setting
@@ -209,8 +209,7 @@ def update_hours():
     try:
         data = request.get_json(silent=True)
         if data and isinstance(data, dict):
-            # 確保 force_open 正確轉成布林值
-            data["force_open"] = bool(data.get("force_open", False))
+            data["force_close"] = bool(data.get("force_close", False))
             save_hours(data)
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "無效資料"}), 400
