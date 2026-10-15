@@ -38,7 +38,12 @@ def customer_menu():
 
 @app.route("/admin")
 def admin_page():
-    return render_template("admin.html", menu=load_menu(), orders=ORDERS)
+  current_menu = load_menu()
+  return render_template(
+      "admin.html",
+      menu=current_menu,
+      orders=ORDERS,
+      completed_orders=COMPLETED_ORDERS,
 
 
 @app.route("/api/menu", methods=["GET", "POST"])
