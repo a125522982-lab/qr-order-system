@@ -75,16 +75,7 @@ default_menu = {
     "505": {"name": "原翠玉露 (580c.c)", "price": 35, "category": "drink", "is_sold_out": False},
 }
 
-default_hours = {
-    "force_close": False,
-    "Mon": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Tue": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Wed": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Thu": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Fri": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Sat": {"open": "00:00", "close": "23:59", "enabled": True},
-    "Sun": {"open": "00:00", "close": "23:59", "enabled": True},
-}
+default_hours = {"force_close": False}
 
 ORDERS = []
 ACCEPTED_ORDERS = []
@@ -93,7 +84,6 @@ CANCELLED_ORDERS = []
 
 
 def safe_int(val, default=0):
-    """安全轉換整數，防止任何型態錯誤導致 500"""
     try:
         return int(val)
     except (TypeError, ValueError):
@@ -101,21 +91,16 @@ def safe_int(val, default=0):
 
 
 def load_menu():
-    if not os.path.exists(MENU_FILE):
-        with open(MENU_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_menu, f, ensure_ascii=False, indent=4)
     try:
+        if not os.path.exists(MENU_FILE):
+            with open(MENU_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_menu, f, ensure_ascii=False, indent=4)
         with open(MENU_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if data and isinstance(data, dict):
-                for item_id, item_info in data.items():
-                    if "is_sold_out" not in item_info:
-                        item_info["is_sold_out"] = False
-                    if "category" not in item_info:
-                        item_info["category"] = "fried"
+            if isinstance(data, dict):
                 return data
-    except Exception:
-        pass
+    except Exception as e:
+        print("載入選單發生例外:", e)
     return default_menu
 
 
@@ -125,15 +110,13 @@ def save_menu(menu_data):
 
 
 def load_hours():
-    if not os.path.exists(HOURS_FILE):
-        with open(HOURS_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_hours, f, ensure_ascii=False, indent=4)
     try:
+        if not os.path.exists(HOURS_FILE):
+            with open(HOURS_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_hours, f, ensure_ascii=False, indent=4)
         with open(HOURS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-            if data and isinstance(data, dict):
-                if "force_close" not in data:
-                    data["force_close"] = False
+            if isinstance(data, dict):
                 return data
     except Exception:
         pass
@@ -156,19 +139,18 @@ def index():
 
 @app.route("/menu")
 def customer_menu():
-    table = request.args.get("table", "1")
-    hours = load_hours()
-    
-    force_close = bool(hours.get("force_close", False))
-    
-    if force_close:
-        is_open = False
-        display_hours = {"open": "暫停", "close": "休息中"}
-    else:
-        is_open = True
-        display_hours = {"open": "00:00", "close": "23:59"}
+    try:
+        table = request.args.get("table", "1")
+        hours = load_hours()
+        force_close = bool(hours.get("force_close", False))
+        
+        is_open = not force_close
+        menu_data = load_menu()
 
-    return render_template("customer.html", table=table, menu=load_menu(), is_open=is_open, hours=display_hours)
+        return render_template("customer.html", table=table, menu=menu_data, is_open=is_open)
+    except Exception as e:
+        print("❌ 渲染點餐頁面發生嚴重錯誤:", str(e))
+        return f"伺服器內部錯誤 (請檢查終端機): {e}", 500
 
 
 @app.route("/admin")
@@ -180,16 +162,15 @@ def admin_page():
     def clean_list(lst, status):
         cleaned = []
         for o in lst:
-            if isinstance(o, dict) and callable(o.get("food_list")) is False:
+            if isinstance(o, dict):
                 fl = o.get("food_list", [])
                 if isinstance(fl, list):
                     phone = str(o.get("phone", "0000000000"))
-                    phone_last4 = phone[-4:] if len(phone) >= 4 else "0000"
                     cleaned.append({
                         "id": str(o.get("id", time.time())),
                         "table": str(o.get("table", "1")),
                         "phone": phone,
-                        "phone_last4": phone_last4,
+                        "phone_last4": phone[-4:] if len(phone) >= 4 else "0000",
                         "food_list": fl,
                         "total": safe_int(o.get("total", 0)),
                         "status": status,
@@ -206,7 +187,7 @@ def admin_page():
     item_stats = {}
     for o in COMPLETED_ORDERS:
         for item in o["food_list"]:
-            name = item["name"]
+            name = item.get("name", "未知")
             qty = safe_int(item.get("quantity", 1), 1)
             item_stats[name] = item_stats.get(name, 0) + qty
 
@@ -228,7 +209,7 @@ def update_hours():
     try:
         data = request.get_json(silent=True)
         if data and isinstance(data, dict):
-            data["force_close"] = True if data.get("force_close") == True or data.get("force_close") == "true" else False
+            data["force_close"] = bool(data.get("force_close") == True or data.get("force_close") == "true")
             save_hours(data)
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "無效資料"}), 400
