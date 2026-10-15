@@ -53,9 +53,8 @@ default_menu = {
     "212": {"name": "雞腿滿足桶", "price": 399, "is_sold_out": False},
 }
 
-# 預設全天開放營業（00:00 - 23:59），全手動/全自動皆可配合
 default_hours = {
-    "force_open": True,  # 預設強制開啟營業
+    "force_open": True,
     "Mon": {"open": "00:00", "close": "23:59", "enabled": True},
     "Tue": {"open": "00:00", "close": "23:59", "enabled": True},
     "Wed": {"open": "00:00", "close": "23:59", "enabled": True},
@@ -128,16 +127,17 @@ def customer_menu():
     table = request.args.get("table", "1")
     hours = load_hours()
     
-    # 若開啓「強制營業」，直接開放點餐
-    if hours.get("force_open", True):
+    force_open = bool(hours.get("force_open", True))
+    
+    now = datetime.now()
+    day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+    today_key = day_map[now.weekday()]
+    today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "23:59"})
+    
+    if force_open:
         is_open = True
-        today_setting = {"open": "全天", "close": "開放"}
+        display_hours = {"open": "全天", "close": "開放中"}
     else:
-        now = datetime.now()
-        day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
-        today_key = day_map[now.weekday()]
-        today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "23:59"})
-        
         is_open = True
         if not today_setting.get("enabled", True):
             is_open = False
@@ -147,8 +147,9 @@ def customer_menu():
             close_time = today_setting.get("close", "23:59")
             if not (open_time <= current_time_str <= close_time):
                 is_open = False
+        display_hours = today_setting
 
-    return render_template("customer.html", table=table, menu=load_menu(), is_open=is_open, hours=today_setting)
+    return render_template("customer.html", table=table, menu=load_menu(), is_open=is_open, hours=display_hours)
 
 
 @app.route("/admin")
@@ -207,7 +208,9 @@ def admin_page():
 def update_hours():
     try:
         data = request.get_json(silent=True)
-        if data:
+        if data and isinstance(data, dict):
+            # 確保 force_open 正確轉成布林值
+            data["force_open"] = bool(data.get("force_open", False))
             save_hours(data)
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "無效資料"}), 400
