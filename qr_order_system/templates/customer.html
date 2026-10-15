@@ -133,32 +133,33 @@
         totalAmountEl.innerText = total;
     }
 
-    // 點擊送出時，跳出輸入電話後四碼的對話框
+    // 點擊送出時，要求輸入 10 碼電話號碼，並提示後四碼為取餐編號
     function promptCheckout() {
         if (cart.length === 0) {
             alert('購物車是空的，請先選擇餐點！');
             return;
         }
 
-        let phoneLast4 = prompt('請輸入您的【電話後四碼】作為取餐編號：');
+        let phone = prompt('請輸入您的【完整 10 碼電話號碼】（後四碼將作為取餐編號）：');
         
-        if (phoneLast4 === null) return; // 點擊取消
+        if (phone === null) return; // 點擊取消
         
-        phoneLast4 = phoneLast4.trim();
-        if (phoneLast4.length !== 4 || isNaN(phoneLast4)) {
-            alert('格式錯誤！請務必輸入正確的 4 位數字。');
+        phone = phone.trim();
+        if (phone.length !== 10 || isNaN(phone)) {
+            alert('格式錯誤！請務必輸入正確的 10 位數字電話號碼。');
             return;
         }
 
-        submitOrder(phoneLast4);
+        submitOrder(phone);
     }
 
-    function submitOrder(phoneLast4) {
+    function submitOrder(phone) {
         let total = parseInt(document.getElementById('total-amount').innerText);
+        let phoneLast4 = phone.slice(-4);
 
         let orderData = {
             table: tableNumber,
-            phone_last4: phoneLast4,
+            phone: phone,
             items: cart,
             total: total
         };
@@ -171,7 +172,7 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                alert(`🎉 訂單已成功送出！您的取餐編號為：【${phoneLast4}】`);
+                alert(`🎉 訂單已成功送出！您的取餐編號為：【${phoneLast4}】（電話末四碼）`);
                 cart = [];
                 updateCartUI();
             } else {
