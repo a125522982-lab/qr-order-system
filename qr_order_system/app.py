@@ -47,17 +47,43 @@ def customer_menu():
 
 @app.route("/admin")
 def admin_page():
-    try:
-        current_menu = load_menu()
-        return render_template(
-            "admin.html",
-            menu=current_menu,
-            orders=ORDERS,
-            completed_orders=COMPLETED_ORDERS,
-        )
-    except Exception as e:
-        print("後台渲染發生例外:", str(e))
-        return f"後台載入錯誤: {str(e)}", 500
+    global ORDERS, COMPLETED_ORDERS
+    current_menu = load_menu()
+    
+    # 徹底清洗：如果 ORDERS 裡面有任何不是標準 dict 或帶有函式的髒資料，直接強制清空防爆
+    clean_orders = []
+    for o in ORDERS:
+        if isinstance(o, dict) and callable(o.get("food_list")) is False:
+            # 確保 food_list 是單純的 list
+            fl = o.get("food_list", [])
+            if isinstance(fl, list):
+                clean_orders.append({
+                    "id": str(o.get("id", time.time())),
+                    "table": str(o.get("table", "1")),
+                    "food_list": fl,
+                    "total": int(o.get("total", 0))
+                })
+    ORDERS = clean_orders
+
+    clean_completed = []
+    for o in COMPLETED_ORDERS:
+        if isinstance(o, dict):
+            fl = o.get("food_list", [])
+            if isinstance(fl, list):
+                clean_completed.append({
+                    "id": str(o.get("id", time.time())),
+                    "table": str(o.get("table", "1")),
+                    "food_list": fl,
+                    "total": int(o.get("total", 0))
+                })
+    COMPLETED_ORDERS = clean_completed
+
+    return render_template(
+        "admin.html",
+        menu=current_menu,
+        orders=ORDERS,
+        completed_orders=COMPLETED_ORDERS,
+    )
 
 
 @app.route("/api/menu", methods=["GET", "POST"])
@@ -78,10 +104,9 @@ def place_order():
         if not data:
             return jsonify({"success": False, "message": "無效資料"}), 400
 
-        raw_items = data.get("items", [])
+        raw_items = data.get("items", data.get("food_list", []))
         safe_item_list = []
         
-        # 確保 items 絕對是一個乾淨的 List，避開任何 método 混淆
         if isinstance(raw_items, list):
             for item in raw_items:
                 if isinstance(item, dict):
@@ -94,12 +119,11 @@ def place_order():
         new_order = {
             "id": str(int(time.time() * 1000)),
             "table": str(data.get("table", "1")),
-            "food_list": safe_item_list,  # 改用安全的欄位名稱避開 .items() 衝突
+            "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
         }
 
         ORDERS.append(new_order)
-        print("成功接收訂單:", new_order)
         return jsonify({"success": True, "message": "ok"})
     except Exception as e:
         print("訂單接收報錯:", str(e))
