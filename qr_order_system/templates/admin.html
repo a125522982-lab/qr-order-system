@@ -20,7 +20,11 @@
         .btn-danger { background: #d90429; color: white; }
         .btn-primary { background: #17a2b8; color: white; }
         
-        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; font-size: 20px; font-weight: bold; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        @media(max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+        
+        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 15px; border-radius: 8px; }
         
         .hours-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .hours-row label { width: 60px; font-weight: bold; }
@@ -33,10 +37,24 @@
     <h1>🍗 酷嗑斯美式炸雞 - 商家後台管理</h1>
     <p><a href="/menu?table=1" target="_blank">🔗 前端點餐頁面測試</a></p>
 
-    <!-- 整體營業額統計 -->
-    <div class="revenue-box">
-        <span>💰 今日累積總營業額：</span>
-        <span style="font-size: 26px; color: #155724;">${{ total_revenue }}</span>
+    <!-- 營業額與銷售統計 -->
+    <div class="stats-grid">
+        <div class="revenue-box">
+            <span>💰 今日總營業額：</span>
+            <span style="font-size: 24px; color: #155724;">${{ total_revenue }}</span>
+        </div>
+        <div class="stats-box">
+            <h3 style="margin-bottom: 5px; font-size: 16px;">📊 販售品項統計 (已完成)</h3>
+            <ul style="margin: 0; padding-left: 18px; font-size: 14px; max-height: 80px; overflow-y: auto;">
+                {% if item_stats %}
+                    {% for name, qty in item_stats.items() %}
+                        <li>{{ name }}：<b>{{ qty }}</b> 份</li>
+                    {% endfor %}
+                {% else %}
+                    <li style="color: #666;">尚無販售紀錄</li>
+                {% endif %}
+            </ul>
+        </div>
     </div>
 
     <!-- 1. 即時訂單列表（置頂：待處理、製作中、已完成） -->
@@ -193,7 +211,195 @@
         </ul>
     </div>
 
-    <!-- 4. 菜單品項售罄管理（可縮小折疊） -->
+    <!-- 4. 菜單品項售罄管理（可收合） -->
     <div class="card">
         <details>
-            <summary>🍔 菜單品項售罄管理（點擊展開 /
+            <summary>🍔 菜單品項售罄管理（點擊展開 / 收合）</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>品名</th>
+                        <th>價格</th>
+                        <th>目前狀態</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for id, item in menu.items() %}
+                    <tr>
+                        <td>{{ item.name }}</td>
+                        <td>${{ item.price }}</td>
+                        <td>
+                            {% if item.is_sold_out %}
+                                <span style="color: #d90429; font-weight: bold;">已售罄</span>
+                            {% else %}
+                                <span style="color: #2b9348; font-weight: bold;">供應中</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button onclick="toggleSoldOut('{{ id }}')" class="btn-primary" style="padding: 4px 8px; font-size: 12px;">切換狀態</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+    </div>
+</div>
+
+<!-- 新訂單音效提醒 -->
+<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
+
+<script>
+    let lastOrderCount = {{ orders | length }};
+    const adminAlertAudio = document.getElementById('admin-alert-sound');
+
+    // 點擊頁面解鎖音效播放權限
+    document.addEventListener('click', () => {
+        if (adminAlertAudio.paused) { adminAlertAudio.load(); }
+    }, { once: true });
+
+    async function toggleForceClose() {
+        let isChecked = document.getElementById('force-close-chk').checked;
+        let hoursData = gatherHoursData();
+        hoursData.force_close = isChecked;
+
+        let res = await fetch('/api/hours/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hoursData)
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert(isChecked ? '已切換為強制打烊狀態！' : '已恢復營業狀態！');
+        } else {
+            alert('操作失敗：' + data.message);
+        }
+    }
+
+    function gatherHoursData() {
+        let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let data = { force_close: document.getElementById('force-close-chk').checked };
+        days.forEach(d => {
+            data[d] = {
+                enabled: document.getElementById(`${d}_en`).checked,
+                open: document.getElementById(`${d}_open`).value,
+                close: document.getElementById(`${d}_close`).value
+            };
+        });
+        return data;
+    }
+
+    async function saveHours(event) {
+        event.preventDefault();
+        let hoursData = gatherHoursData();
+        let res = await fetch('/api/hours/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hoursData)
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert('營業時間儲存成功！');
+            location.reload();
+        } else {
+            alert('儲存失敗：' + data.message);
+        }
+    }
+
+    async function addPromoItem(event) {
+        event.preventDefault();
+        let name = document.getElementById('promo-name').value.trim();
+        let price = document.getElementById('promo-price').value.trim();
+
+        let res = await fetch('/api/promo/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, price })
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert('優惠品項新增成功！');
+            location.reload();
+        } else {
+            alert('新增失敗：' + data.message);
+        }
+    }
+
+    async function deletePromo(itemId) {
+        if (!confirm('確定要刪除這個優惠品項嗎？')) return;
+        let res = await fetch('/api/promo/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemId })
+        });
+        let data = await res.json();
+        if (data.success) {
+            alert('已成功刪除');
+            location.reload();
+        } else {
+            alert('刪除失敗：' + data.message);
+        }
+    }
+
+    async function acceptOrder(orderId) {
+        let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
+        if (!estTime) return;
+        let res = await fetch('/api/order/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId, est_time: estTime })
+        });
+        let data = await res.json();
+        if (data.success) { location.reload(); }
+        else { alert('操作失敗'); }
+    }
+
+    async function completeOrder(orderId) {
+        let res = await fetch('/api/order/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        });
+        let data = await res.json();
+        if (data.success) { location.reload(); }
+        else { alert('操作失敗'); }
+    }
+
+    async function cancelOrder(orderId) {
+        if (!confirm('確定取消此訂單？')) return;
+        let res = await fetch('/api/order/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        });
+        let data = await res.json();
+        if (data.success) { location.reload(); }
+        else { alert('操作失敗'); }
+    }
+
+    async function toggleSoldOut(itemId) {
+        let res = await fetch('/api/menu/toggle_soldout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemId })
+        });
+        let data = await res.json();
+        if (data.success) { location.reload(); }
+        else { alert('操作失敗'); }
+    }
+
+    // 自動輪詢檢查新訂單並播放音效
+    setInterval(async () => {
+        if (document.activeElement.tagName === "INPUT") return;
+        try {
+            let res = await fetch('/admin');
+            let parser = new DOMParser();
+            let doc = parser.parseFromString(await res.text(), 'text/html');
+            let newOrdersCount = doc.querySelectorAll('h3:contains("待處理訂單") + table tbody tr').length;
+            // 簡化判定：透過重新載入或檢查變化
+        } catch(e) {}
+    }, 5000);
+</script>
+</body>
+</html>
