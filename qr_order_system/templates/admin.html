@@ -23,8 +23,17 @@
         .cancelled-card { background: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #721c24; }
         .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .badge-phone { background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 14px; }
+        .prefs-tag { background: #ff7043; color: white; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: bold; margin-left: 5px; }
         .stats-box, .hours-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
         .hours-row { display: flex; gap: 15px; align-items: center; margin-bottom: 8px; }
+
+        /* 列印小票專用樣式 (平時隱藏，列印時顯示) */
+        #print-ticket { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-ticket, #print-ticket * { visibility: visible; }
+            #print-ticket { display: block; position: absolute; left: 0; top: 0; width: 100%; font-size: 18px; padding: 15px; background: white; color: black; }
+        }
     </style>
 </head>
 <body>
@@ -84,9 +93,18 @@
         <div id="orders-list">
             {% if orders %}
                 {% for order in orders %}
-                    <div class="order-card" id="order-{{ order.id }}">
+                    <div class="order-card" id="order-{{ order.id }}" 
+                         data-table="{{ order.table }}" 
+                         data-phone="{{ order.phone_last4 }}" 
+                         data-spicy="{{ order.spicy }}" 
+                         data-pepper="{{ order.pepper }}" 
+                         data-total="{{ order.total }}"
+                         data-items='{{ order.food_list | tojson }}'>
                         <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> (完整電話: {{ order.phone }}) - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> 
+                            <span class="prefs-tag">🌶️ {{ order.spicy }}</span>
+                            <span class="prefs-tag" style="background: #607d8b;">🧂 胡椒: {{ order.pepper }}</span>
+                            - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -104,7 +122,7 @@
                                 <option value="25分鐘">25分鐘</option>
                                 <option value="30分鐘">30分鐘</option>
                             </select>
-                            <button class="accept" onclick="acceptOrder('{{ order.id }}')">接受訂單</button>
+                            <button class="accept" onclick="acceptAndPrintOrder('{{ order.id }}')">接受並出單</button>
                             <button class="danger" onclick="cancelOrder('{{ order.id }}')">取消</button>
                         </div>
                     </div>
@@ -123,7 +141,10 @@
                 {% for order in accepted_orders %}
                     <div class="accepted-card">
                         <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> | 預估: <b>{{ order.est_time }}</b> - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> | 預估: <b>{{ order.est_time }}</b>
+                            <span class="prefs-tag">🌶️ {{ order.spicy }}</span>
+                            <span class="prefs-tag" style="background: #607d8b;">🧂 胡椒: {{ order.pepper }}</span>
+                            - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -152,7 +173,7 @@
             {% if completed_orders %}
                 {% for order in completed_orders %}
                     <div class="completed-card">
-                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 總金額: ${{ order.total }} | 
+                        <b>{{ order.table }} 號桌</b> | 取餐編號: <b>{{ order.phone_last4 }}</b> | 🌶️ {{ order.spicy }} | 🧂 胡椒: {{ order.pepper }} | ${{ order.total }} | 
                         {% if order.food_list is iterable and order.food_list is not string %}
                             {% for item in order.food_list %}
                                 {{ item.name }} x {{ item.quantity }}{% if not loop.last %}, {% endif %}
@@ -226,6 +247,22 @@
     </div>
 </div>
 
+<!-- 廚房列印專用小票容器 -->
+<div id="print-ticket">
+    <h2 style="text-align: center; margin: 0;">🍗 酷嗑斯美式炸雞 🍗</h2>
+    <h3 style="text-align: center; margin: 5px 0 15px 0;">【廚房出單小票】</h3>
+    <hr style="border: 1px dashed black;">
+    <p><b>桌號：</b> <span id="p-table"></span> 號桌</p>
+    <p><b>取餐末四碼：</b> <span id="p-phone" style="font-size: 24px; color: red;"></span></p>
+    <p><b>口味偏好：</b> <span id="p-spicy" style="font-size: 20px;"></span> | <b>胡椒：</b> <span id="p-pepper"></span></p>
+    <hr style="border: 1px dashed black;">
+    <p><b>點餐內容：</b></p>
+    <ul id="p-items" style="font-size: 18px; padding-left: 20px;"></ul>
+    <hr style="border: 1px dashed black;">
+    <p style="text-align: right; font-size: 18px;"><b>總金額：$<span id="p-total"></span></b></p>
+    <p style="text-align: center; font-size: 14px; margin-top: 20px;">請將本單貼於紙袋或餐盒上</p>
+</div>
+
 <script>
     const soundEl = document.getElementById('alert-sound');
 
@@ -266,6 +303,49 @@
 
         } catch (err) {}
     }, 3000);
+
+    // 接受訂單並自動列印廚房小票
+    function acceptAndPrintOrder(orderId) {
+        let card = document.getElementById('order-' + orderId);
+        if (card) {
+            let table = card.getAttribute('data-table');
+            let phone = card.getAttribute('data-phone');
+            let spicy = card.getAttribute('data-spicy');
+            let pepper = card.getAttribute('data-pepper');
+            let total = card.getAttribute('data-total');
+            let items = JSON.parse(card.getAttribute('data-items'));
+
+            // 填入列印範本
+            document.getElementById('p-table').innerText = table;
+            document.getElementById('p-phone').innerText = phone;
+            document.getElementById('p-spicy').innerText = spicy;
+            document.getElementById('p-pepper').innerText = pepper;
+            document.getElementById('p-total').innerText = total;
+
+            let itemsHtml = '';
+            items.forEach(i => {
+                itemsHtml += `<li><b>${i.name}</b> x ${i.quantity}</li>`;
+            });
+            document.getElementById('p-items').innerHTML = itemsHtml;
+
+            // 觸發瀏覽器列印
+            window.print();
+        }
+
+        // 執行後台接受訂單 API
+        let estSelect = document.getElementById('est-time-' + orderId);
+        let estTime = estSelect ? estSelect.value : '15分鐘';
+        
+        fetch('/api/order/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId, est_time: estTime })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) location.reload();
+        });
+    }
 
     function saveHoursSetting() {
         let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -309,21 +389,6 @@
         .then(data => {
             if (data.success) location.reload();
             else alert('操作失敗：' + data.message);
-        });
-    }
-
-    function acceptOrder(orderId) {
-        let estSelect = document.getElementById('est-time-' + orderId);
-        let estTime = estSelect ? estSelect.value : '15分鐘';
-        
-        fetch('/api/order/accept', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId, est_time: estTime })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) location.reload();
         });
     }
 
