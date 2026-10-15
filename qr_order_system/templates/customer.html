@@ -54,7 +54,7 @@
         .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 15px 0; }
         .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
         .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
-        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 20px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; display: none; }
+        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 25px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -72,61 +72,62 @@
         </div>
     </div>
 
-    <!-- 只有當後台手動勾選「強制打烊」時才會顯示休息提示，否則永遠正常開放點餐！ -->
-    <div id="closed-banner" class="closed-banner">
-        🔴 目前店家休息中，暫停線上點餐！
-    </div>
-
-    <div id="order-view">
-        <div class="category-tabs">
-            <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
-            <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
-            <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
-            <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
-            <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
-            <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
-            <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
-            <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
+    {% if not is_open %}
+        <div class="closed-banner">
+            🔴 目前為非營業時間或已打烊，暫停線上點餐！
         </div>
+    {% else %}
+        <div id="order-view">
+            <div class="category-tabs">
+                <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
+                <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
+                <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
+                <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
+                <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
+                <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
+                <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
+                <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
+            </div>
 
-        <div class="menu-grid" id="menu-grid">
-            {% for id, item in menu.items() %}
-                <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
-                    <div class="item-info">
-                        <div class="item-name">
-                            {% if item.get('category') == 'promo' %}🔥 {% endif %}{{ item.get('name', '') }}
+            <div class="menu-grid" id="menu-grid">
+                {% for id, item in menu.items() %}
+                    <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
+                        <div class="item-info">
+                            <div class="item-name">
+                                {% if item.get('category') == 'promo' %}🔥 {% endif %}{{ item.get('name', '') }}
+                            </div>
+                            <div class="item-price">${{ item.get('price', 0) }}</div>
                         </div>
-                        <div class="item-price">${{ item.get('price', 0) }}</div>
+                        <div>
+                            <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
+                        </div>
                     </div>
-                    <div>
-                        <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+                {% endfor %}
+            </div>
 
-        <div class="cart-section">
-            <h2>🛒 您的購物車</h2>
-            <table class="cart-table">
-                <thead>
-                    <tr>
-                        <th>品名與口味</th>
-                        <th>單價</th>
-                        <th>數量</th>
-                        <th>小計</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="cart-body">
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-price">總金額: $<span id="total-amount">0</span></div>
-            <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
+            <div class="cart-section">
+                <h2>🛒 您的購物車</h2>
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>品名與口味</th>
+                            <th>單價</th>
+                            <th>數量</th>
+                            <th>小計</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="total-price">總金額: $<span id="total-amount">0</span></div>
+                <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
+            </div>
         </div>
-    </div>
+    {% endif %}
 
     <div id="tracker-view" style="display: none;" class="tracker-section">
         <h2>📋 訂單狀態追蹤</h2>
@@ -490,7 +491,7 @@
         let item = cart.find(item => item.cartKey === cartKey);
         if (item) {
             item.quantity += delta;
-            if (item.quantity <= 0) cart = cart.filter(i => i.cartKey !== cartKey);
+            if (item.quantity <= 0) cart = cart.filter(i => item.cartKey !== cartKey);
         }
         updateCartUI();
     }
@@ -657,13 +658,6 @@
                 }
             } catch (e) {}
         }, 3000);
-    }
-
-    async function checkStoreStatus() {
-        try {
-            let res = await fetch('/api/hours/status'); // 或利用現有狀態檢查
-            // 讓前端完全自由點餐，只有後台手動強制關閉才顯示休息橫幅
-        } catch(e) {}
     }
 
     function cancelMyOrder() {
