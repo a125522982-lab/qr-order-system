@@ -8,6 +8,12 @@
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1, h2 { color: #333; text-align: center; }
         .table-badge { background: #ffc107; padding: 6px 12px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+        
+        /* 分類標籤樣式 */
+        .category-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-btn { padding: 8px 16px; background: #e9ecef; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; color: #495057; }
+        .tab-btn.active { background: #007bff; color: white; }
+
         .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
         .menu-item { border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
         .menu-item.sold-out { background: #f1f1f1; opacity: 0.7; }
@@ -18,6 +24,12 @@
         button.sold-out-btn { background: #6c757d; cursor: not-allowed; }
         button.danger { background: #dc3545; }
         .cart-section, .tracker-section, .search-section { border-top: 2px solid #eee; padding-top: 20px; margin-top: 20px; }
+        
+        /* 口味偏好設定區塊 */
+        .preferences-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .prefs-group { margin-bottom: 10px; }
+        .prefs-group label { margin-right: 15px; font-weight: bold; cursor: pointer; }
+
         .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .cart-table th, .cart-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .cart-table th { background: #f2f2f2; }
@@ -56,9 +68,18 @@
         <!-- 點餐與購物車主畫面 -->
         <div id="order-view">
             <h2>線上菜單</h2>
-            <div class="menu-grid">
+            
+            <!-- 分類標籤切換 -->
+            <div class="category-tabs">
+                <button class="tab-btn active" onclick="filterMenu('all', this)">全部品項</button>
+                <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
+                <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
+                <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
+            </div>
+
+            <div class="menu-grid" id="menu-grid">
                 {% for id, item in menu.items() %}
-                    <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}">
+                    <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}" data-category="{{ item.category }}">
                         <div>
                             <div class="item-name">{{ item.name }}</div>
                             <div class="item-price">${{ item.price }}</div>
@@ -76,6 +97,23 @@
 
             <div class="cart-section">
                 <h2>🛒 您的購物車</h2>
+                
+                <!-- 口味與胡椒偏好選項 -->
+                <div class="preferences-box">
+                    <div class="prefs-group">
+                        <label>🌶️ <b>辣度選擇：</b></label>
+                        <label><input type="radio" name="spicy" value="不辣" checked> 不辣</label>
+                        <label><input type="radio" name="spicy" value="微辣"> 微辣</label>
+                        <label><input type="radio" name="spicy" value="小辣"> 小辣</label>
+                        <label><input type="radio" name="spicy" value="大辣"> 大辣</label>
+                    </div>
+                    <div class="prefs-group" style="margin-bottom: 0;">
+                        <label>🧂 <b>胡椒粉：</b></label>
+                        <label><input type="radio" name="pepper" value="要" checked> 要胡椒</label>
+                        <label><input type="radio" name="pepper" value="不要"> 不要胡椒</label>
+                    </div>
+                </div>
+
                 <table class="cart-table">
                     <thead>
                         <tr>
@@ -106,6 +144,8 @@
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
             <div id="est-time-container" style="font-size: 16px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
             
+            <p id="track-prefs" style="font-weight: bold; color: #333; margin: 5px 0;"></p>
+
             <button id="cancel-order-btn" class="danger" style="padding: 6px 12px; margin-bottom: 10px; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
@@ -135,6 +175,21 @@
             alertAudio.load();
         }
     }, { once: true });
+
+    // 菜單分類切換篩選
+    function filterMenu(category, btn) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        let items = document.querySelectorAll('.menu-item');
+        items.forEach(item => {
+            if (category === 'all' || item.getAttribute('data-category') === category) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
 
     function addToCart(id, name, price) {
         let existingItem = cart.find(item => item.id === id);
@@ -212,12 +267,16 @@
 
     function submitOrder(phone) {
         let total = parseInt(document.getElementById('total-amount').innerText);
+        let spicy = document.querySelector('input[name="spicy"]:checked').value;
+        let pepper = document.querySelector('input[name="pepper"]:checked').value;
 
         let orderData = {
             table: tableNumber,
             phone: phone,
             items: cart,
-            total: total
+            total: total,
+            spicy: spicy,
+            pepper: pepper
         };
 
         fetch('/api/order', {
@@ -253,6 +312,7 @@
                 
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
+                document.getElementById('track-prefs').innerText = `口味：${order.spicy} | 胡椒：${order.pepper}`;
                 
                 let itemsHtml = '';
                 order.food_list.forEach(i => {
