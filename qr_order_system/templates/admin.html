@@ -23,7 +23,8 @@
         .cancelled-card { background: #f8d7da; border: 1px solid #f5c6cb; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #721c24; }
         .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
         .badge-phone { background: #dc3545; color: white; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 14px; }
-        .stats-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .stats-box, .hours-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .hours-row { display: flex; gap: 15px; align-items: center; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -32,11 +33,29 @@
         <span>🟢 <b>即時連線中</b>：只要有未接受的訂單，將持續播放提示音提醒</span>
     </div>
 
-    <!-- 後台專屬提示音檔 -->
     <audio id="alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" preload="auto"></audio>
 
     <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
     
+    <!-- 營業時間設定區塊 -->
+    <div class="hours-box">
+        <h3>⏰ 客戶端點餐營業時間設定</h3>
+        <div id="hours-form">
+            {% set day_names = {'Mon': '星期一', 'Tue': '星期二', 'Wed': '星期三', 'Thu': '星期四', 'Fri': '星期五', 'Sat': '星期六', 'Sun': '星期日'} %}
+            {% for code, name in day_names.items() %}
+                <div class="hours-row">
+                    <label style="width: 80px; font-weight: bold;">{{ name }}</label>
+                    <label><input type="checkbox" id="enabled-{{ code }}" {% if hours[code].enabled %}checked{% endif %}> 開放營業</label>
+                    <span>從</span>
+                    <input type="time" id="open-{{ code }}" value="{{ hours[code].open }}">
+                    <span>到</span>
+                    <input type="time" id="close-{{ code }}" value="{{ hours[code].close }}">
+                </div>
+            {% endfor %}
+            <button onclick="saveHoursSetting()" style="background: #28a745; margin-top: 10px;">儲存營業時間設定</button>
+        </div>
+    </div>
+
     <!-- 今日營收與品項統計區塊 -->
     <div class="stats-box" id="stats-section">
         <h3>📊 今日營收與食材銷售統計</h3>
@@ -192,7 +211,7 @@
                             <button class="soldout-on" onclick="toggleSoldOut('{{ id }}')">改為供應</button>
                         {% else %}
                             <button class="soldout-btn" onclick="toggleSoldOut('{{ id }}')">設為售罄</button>
-                        {% endif %}
+                        {%/if}
                     </td>
                 </tr>
                 {% endfor %}
@@ -204,7 +223,6 @@
 <script>
     const soundEl = document.getElementById('alert-sound');
 
-    // 瀏覽器互動解鎖音訊
     document.addEventListener('click', () => {
         if (soundEl.paused) {
             soundEl.load();
@@ -218,7 +236,8 @@
         } catch (e) {}
     }
 
-    // 每 3 秒輪詢更新後台各清單與統計數據
+    let lastPendingCount = {{ orders|length }};
+
     setInterval(async () => {
         try {
             let res = await fetch('/admin');
@@ -227,16 +246,13 @@
             let parser = new DOMParser();
             let doc = parser.parseFromString(text, 'text/html');
             
-            // 檢查目前待處理訂單數量
             let pendingCards = doc.querySelectorAll('#orders-list .order-card');
             let currentPendingCount = pendingCards.length;
 
-            // 只要「待處理」區塊還有訂單，就持續播放提示音
             if (currentPendingCount > 0) {
                 playCustomSound();
             }
 
-            // 精準抽換各個區塊的 HTML，而不破壞頁面結構
             document.getElementById('stats-section').innerHTML = doc.getElementById('stats-section').innerHTML;
             document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
             document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
@@ -244,10 +260,37 @@
             document.getElementById('cancelled-list').innerHTML = doc.getElementById('cancelled-list').innerHTML;
             document.getElementById('menu-table-body').innerHTML = doc.getElementById('menu-table-body').innerHTML;
 
-        } catch (err) {
-            console.log("背景同步異常", err);
-        }
+        } catch (err) {}
     }, 3000);
+
+    // 儲存營業時間
+    function saveHoursSetting() {
+        let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        let hoursData = {};
+
+        days.forEach(code => {
+            hoursData[code] = {
+                enabled: document.getElementById('enabled-' + code).checked,
+                open: document.getElementById('open-' + code).value,
+                close: document.getElementById('close-' + code).value
+            };
+        });
+
+        fetch('/api/hours/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(hoursData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('營業時間設定已成功儲存！');
+                location.reload();
+            } else {
+                alert('儲存失敗：' + data.message);
+            }
+        });
+    }
 
     function toggleSoldOut(itemId) {
         fetch('/api/menu/toggle_soldout', {
