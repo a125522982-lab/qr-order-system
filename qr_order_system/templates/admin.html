@@ -34,7 +34,7 @@
                         <div>
                             <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
-                            {% if order.food_list %}
+                            {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
                                     <span>{{ item.name }} x {{ item.quantity }}</span>{% if not loop.last %}, {% endif %}
                                 {% endfor %}
@@ -61,7 +61,7 @@
                 {% for order in completed_orders %}
                     <div class="completed-card">
                         <b>{{ order.table }} 號桌</b> | 總金額: ${{ order.total }} | 
-                        {% if order.food_list %}
+                        {% if order.food_list is iterable and order.food_list is not string %}
                             {% for item in order.food_list %}
                                 {{ item.name }} x {{ item.quantity }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
