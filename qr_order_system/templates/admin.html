@@ -13,6 +13,8 @@
         button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button.accept { background: #ffc107; color: #333; }
         button.success { background: #28a745; }
+        button.soldout-btn { background: #6c757d; }
+        button.soldout-on { background: #dc3545; }
         button:hover { opacity: 0.9; }
         .order-card { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
         .accepted-card { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #0c5460; }
@@ -23,11 +25,10 @@
 <body>
 <div class="container">
     <div class="status-bar">
-        <span>🟢 <b>即時連線中</b>：未接受訂單將持續播放您的提示音</span>
+        <span>🟢 <b>即時連線中</b>：未接受訂單將持續播放提示音</span>
         <button onclick="enableSound()" style="background: #17a2b8; font-size: 12px;">點此啟用提示音</button>
     </div>
 
-    <!-- 內建您的音檔播放器物件 -->
     <audio id="alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" preload="auto"></audio>
 
     <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
@@ -115,15 +116,17 @@
 
     <hr>
 
-    <!-- 菜單一覽 -->
+    <!-- 菜單售罄管理 -->
     <div class="section">
-        <h2>📋 現有菜單一覽</h2>
+        <h2>📋 菜單管理與售罄狀態切換</h2>
         <table>
             <thead>
                 <tr>
                     <th>編號</th>
                     <th>品名</th>
                     <th>價格</th>
+                    <th>當前狀態</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -132,6 +135,20 @@
                     <td>{{ id }}</td>
                     <td>{{ item.name }}</td>
                     <td>${{ item.price }}</td>
+                    <td>
+                        {% if item.is_sold_out %}
+                            <span style="color: red; font-weight: bold;">🔴 已售罄</span>
+                        {% else %}
+                            <span style="color: green; font-weight: bold;">🟢 供應中</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.is_sold_out %}
+                            <button class="soldout-on" onclick="toggleSoldOut('{{ id }}')">改為供應</button>
+                        {% else %}
+                            <button class="soldout-btn" onclick="toggleSoldOut('{{ id }}')">設為售罄</button>
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -150,27 +167,20 @@
             soundEl.currentTime = 0;
             alert('提示音已成功啟用！');
         }).catch(e => {
-            console.log("解鎖聲音失敗", e);
             alert('啟用失敗，請再點擊一次');
         });
     }
 
-    // 播放您的自訂音檔
     function playCustomSound() {
         if (!soundEnabled) return;
         try {
             soundEl.currentTime = 0;
-            soundEl.play().catch(err => {
-                console.log("播放被瀏覽器阻擋:", err);
-            });
-        } catch (e) {
-            console.log("音檔播放錯誤", e);
-        }
+            soundEl.play().catch(err => {});
+        } catch (e) {}
     }
 
     let lastPendingCount = {{ orders|length }};
 
-    // 每 3 秒自動輪詢檢查
     setInterval(async () => {
         try {
             let res = await fetch('/admin');
@@ -181,7 +191,6 @@
             
             let currentPendingCount = doc.querySelectorAll('#orders-list .order-card').length;
 
-            // 只要有待處理訂單，就會持續播放您的音檔提醒
             if (currentPendingCount > 0) {
                 if (currentPendingCount > lastPendingCount || soundEnabled) {
                     playCustomSound();
@@ -189,15 +198,29 @@
             }
             lastPendingCount = currentPendingCount;
 
-            // 即時更新三個區塊
             document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
             document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
             document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
 
-        } catch (err) {
-            console.log("背景同步中...", err);
-        }
+        } catch (err) {}
     }, 3000);
+
+    // 切換售罄狀態
+    function toggleSoldOut(itemId) {
+        fetch('/api/menu/toggle_soldout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('操作失敗：' + data.message);
+            }
+        });
+    }
 
     function acceptOrder(orderId) {
         fetch('/api/order/accept', {
@@ -207,11 +230,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('操作失敗：' + data.message);
-            }
+            if (data.success) location.reload();
         });
     }
 
@@ -223,11 +242,7 @@
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('操作失敗：' + data.message);
-            }
+            if (data.success) location.reload();
         });
     }
 </script>
