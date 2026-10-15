@@ -42,6 +42,7 @@ default_menu = {
     "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "category": "fried", "is_sold_out": False},
     "128": {"name": "黃金地瓜條", "price": 50, "category": "fried", "is_sold_out": False},
     "129": {"name": "起司薯球 (6)", "price": 50, "category": "fried", "is_sold_out": False},
+    
     "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "category": "combo", "is_sold_out": False},
     "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "category": "combo", "is_sold_out": False},
     "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "category": "combo", "is_sold_out": False},
@@ -54,29 +55,35 @@ default_menu = {
     "210": {"name": "雞翅滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
     "211": {"name": "雞塊滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
     "212": {"name": "雞腿滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
+
     "301": {"name": "切達起司雞翅 (3)", "price": 120, "category": "cheese", "is_sold_out": False},
     "302": {"name": "切達起司雞里肌 (3)", "price": 70, "category": "cheese", "is_sold_out": False},
     "303": {"name": "切達起司脆皮香雞排", "price": 95, "category": "cheese", "is_sold_out": False},
     "304": {"name": "切達起司無骨雞腿排", "price": 110, "category": "cheese", "is_sold_out": False},
     "305": {"name": "切達起司嗑嗑雞丁", "price": 85, "category": "cheese", "is_sold_out": False},
     "306": {"name": "切達起司脆薯", "price": 65, "category": "cheese", "is_sold_out": False},
+
     "401": {"name": "香檸雞翅 (3)", "price": 120, "category": "lemon", "is_sold_out": False},
     "402": {"name": "香檸雞里肌 (3)", "price": 70, "category": "lemon", "is_sold_out": False},
     "403": {"name": "香檸脆皮香雞排", "price": 95, "category": "lemon", "is_sold_out": False},
     "404": {"name": "香檸無骨雞腿排", "price": 110, "category": "lemon", "is_sold_out": False},
     "405": {"name": "香檸嗑嗑雞丁", "price": 85, "category": "lemon", "is_sold_out": False},
-    "501": {"name": "可樂 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
-    "502": {"name": "雪碧 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
-    "503": {"name": "芬達 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
-    "504": {"name": "檸檬紅茶 (350c.c)", "price": 35, "category": "drink", "is_sold_out": False},
-    "505": {"name": "原翠玉露 (580c.c)", "price": 35, "category": "drink", "is_sold_out": False},
+
+    # 新版飲料系列
+    "501": {"name": "可樂 (250c.c)", "price": 20, "category": "drink", "is_sold_out": False},
+    "502": {"name": "雪碧 (250c.c)", "price": 20, "category": "drink", "is_sold_out": False},
+    "503": {"name": "芬達 (250c.c)", "price": 20, "category": "drink", "is_sold_out": False},
+    "504": {"name": "可樂 (330c.c)", "price": 25, "category": "drink", "is_sold_out": False},
+    "505": {"name": "雪碧 (330c.c)", "price": 25, "category": "drink", "is_sold_out": False},
+    "506": {"name": "芬達 (330c.c)", "price": 25, "category": "drink", "is_sold_out": False},
+    "507": {"name": "檸檬紅茶 (350c.c)", "price": 25, "category": "drink", "is_sold_out": False},
+    "508": {"name": "原翠玉露 (580c.c)", "price": 30, "category": "drink", "is_sold_out": False},
 }
 
 ORDERS = []
 ACCEPTED_ORDERS = []
 COMPLETED_ORDERS = []
 CANCELLED_ORDERS = []
-
 
 def load_menu():
     if not os.path.exists(MENU_FILE):
@@ -88,18 +95,15 @@ def load_menu():
     except Exception:
         return default_menu
 
-
 @app.route("/")
 def index():
     return '<h1>酷嗑斯美式炸雞</h1><p><a href="/menu?table=1">前往點餐</a> | <a href="/admin">後台</a></p>'
-
 
 @app.route("/menu")
 def customer_menu():
     table = request.args.get("table", "1")
     menu = load_menu()
     return render_template("customer.html", table=table, menu=menu, is_open=True)
-
 
 @app.route("/admin")
 def admin_page():
@@ -114,7 +118,6 @@ def admin_page():
         total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
         item_stats={}
     )
-
 
 @app.route("/api/order", methods=["POST"])
 def place_order():
@@ -142,7 +145,6 @@ def place_order():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
-
 @app.route("/api/order/status", methods=["GET"])
 def check_order_status():
     order_id = request.args.get("order_id")
@@ -159,7 +161,6 @@ def check_order_status():
                 return jsonify({"success": True, "order": o})
                 
     return jsonify({"success": False}), 404
-
 
 @app.route("/api/order/accept", methods=["POST"])
 def accept_order():
@@ -190,7 +191,6 @@ def accept_order():
             
     return jsonify({"success": False}), 404
 
-
 @app.route("/api/order/complete", methods=["POST"])
 def complete_order():
     data = request.get_json(silent=True) or {}
@@ -202,7 +202,6 @@ def complete_order():
             COMPLETED_ORDERS.append(found)
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
-
 
 @app.route("/api/order/cancel", methods=["POST"])
 def cancel_order():
@@ -216,7 +215,6 @@ def cancel_order():
                 CANCELLED_ORDERS.append(found)
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
-
 
 if __name__ == "__main__":
     app.run(debug=True)
