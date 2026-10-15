@@ -2,82 +2,109 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>桌號 {{ table }} - 線上點餐</title>
+    <title>酷嗑斯美式炸雞 - 線上點餐</title>
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-        .container { max-width: 800px; margin: auto; }
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
-        .menu-item { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .cart-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        button { background: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
-        button.danger { background: #dc3545; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1, h2 { color: #333; text-align: center; }
+        .table-badge { background: #ffc107; padding: 6px 12px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .menu-item { border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
+        .menu-item.sold-out { background: #f1f1f1; opacity: 0.7; }
+        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        .item-price { color: #e63946; font-weight: bold; margin-bottom: 10px; }
+        button { padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { opacity: 0.9; }
-        .cart-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        button.sold-out-btn { background: #6c757d; cursor: not-allowed; }
+        .cart-section { border-top: 2px solid #eee; padding-top: 20px; }
+        .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .cart-table th, .cart-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .cart-table th { background: #f2f2f2; }
+        .total-price { font-size: 18px; font-weight: bold; text-align: right; margin-bottom: 15px; }
+        .checkout-btn { width: 100%; padding: 12px; background: #28a745; font-size: 18px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🍽️ 酷嗑斯點餐系統 - {{ table }} 號桌</h1>
-    
-    <h2>菜單</h2>
+    <h1>🍗 酷嗑斯美式炸雞</h1>
+    <div style="text-align: center;">
+        <span class="table-badge">桌號：{{ table }} 號桌</span>
+    </div>
+
+    <h2>線上菜單</h2>
     <div class="menu-grid">
         {% for id, item in menu.items() %}
-        <div class="menu-item">
-            <h3>{{ item.name }}</h3>
-            <p>價格: ${{ item.price }}</p>
-            <button onclick="addToCart('{{ item.name }}', {{ item.price }})">加入購物車</button>
-        </div>
+            <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}">
+                <div>
+                    <div class="item-name">{{ item.name }}</div>
+                    <div class="item-price">${{ item.price }}</div>
+                </div>
+                <div>
+                    {% if item.is_sold_out %}
+                        <button class="sold-out-btn" disabled>已售罄</button>
+                    {% else %}
+                        <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加入購物車</button>
+                    {% endif %}
+                </div>
+            </div>
         {% endfor %}
     </div>
 
-    <div class="cart-box">
+    <div class="cart-section">
         <h2>🛒 您的購物車</h2>
-        <div id="cart-items">
-            <p style="color: #777;">目前購物車是空的</p>
-        </div>
-        <hr>
-        <h3>總計金額: $<span id="cart-total">0</span></h3>
-        <button onclick="submitOrder()" style="font-size: 18px; width: 100%; padding: 12px;">確認送出訂單</button>
+        <table class="cart-table">
+            <thead>
+                <tr>
+                    <th>品名</th>
+                    <th>單價</th>
+                    <th>數量</th>
+                    <th>小計</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="cart-body">
+                <tr>
+                    <td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="total-price">總金額: $<span id="total-amount">0</span></div>
+        <button class="checkout-btn" onclick="submitOrder()">送出訂單</button>
     </div>
 </div>
 
 <script>
     let cart = [];
+    const tableNumber = "{{ table }}";
 
-    function addToCart(name, price) {
-        let found = cart.find(item => item.name === name);
-        if (found) {
-            found.quantity += 1;
+    function addToCart(id, name, price) {
+        let existingItem = cart.find(item => item.id === id);
+        if (existingItem) {
+            existingItem.quantity += 1;
         } else {
-            cart.push({ name: name, price: price, quantity: 1 });
+            cart.push({ id: id, name: name, price: price, quantity: 1 });
         }
         updateCartUI();
     }
 
-    function changeQuantity(name, delta) {
-        let found = cart.find(item => item.name === name);
-        if (found) {
-            found.quantity += delta;
-            if (found.quantity <= 0) {
-                removeFromCart(name);
-            } else {
-                updateCartUI();
+    function changeQty(id, delta) {
+        let item = cart.find(item => item.id === id);
+        if (item) {
+            item.quantity += delta;
+            if (item.quantity <= 0) {
+                cart = cart.filter(i => i.id !== id);
             }
         }
-    }
-
-    function removeFromCart(name) {
-        cart = cart.filter(item => item.name !== name);
         updateCartUI();
     }
 
     function updateCartUI() {
-        const container = document.getElementById('cart-items');
-        const totalSpan = document.getElementById('cart-total');
+        let cartBody = document.getElementById('cart-body');
+        let totalAmountEl = document.getElementById('total-amount');
         
         if (cart.length === 0) {
-            container.innerHTML = '<p style="color: #777;">目前購物車是空的</p>';
-            totalSpan.innerText = '0';
+            cartBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td></tr>';
+            totalAmountEl.innerText = '0';
             return;
         }
 
@@ -88,19 +115,22 @@
             let subtotal = item.price * item.quantity;
             total += subtotal;
             html += `
-                <div class="cart-item">
-                    <span><b>${item.name}</b> x ${item.quantity} ($${subtotal})</span>
-                    <div>
-                        <button onclick="changeQuantity('${item.name}', 1)">+</button>
-                        <button onclick="changeQuantity('${item.name}', -1)">-</button>
-                        <button class="danger" onclick="removeFromCart('${item.name}')">刪除</button>
-                    </div>
-                </div>
+                <tr>
+                    <td>${item.name}</td>
+                    <td>$${item.price}</td>
+                    <td>
+                        <button onclick="changeQty('${item.id}', -1)" style="padding: 2px 6px;">-</button>
+                        <span style="margin: 0 8px;">${item.quantity}</span>
+                        <button onclick="changeQty('${item.id}', 1)" style="padding: 2px 6px;">+</button>
+                    </td>
+                    <td>$${subtotal}</td>
+                    <td><button onclick="changeQty('${item.id}', -${item.quantity})" style="background: #dc3545; padding: 4px 8px; font-size: 12px;">刪除</button></td>
+                </tr>
             `;
         });
 
-        container.innerHTML = html;
-        totalSpan.innerText = total;
+        cartBody.innerHTML = html;
+        totalAmountEl.innerText = total;
     }
 
     function submitOrder() {
@@ -109,34 +139,34 @@
             return;
         }
 
-        let total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        let tableNumber = "{{ table }}";
+        let total = parseInt(document.getElementById('total-amount').innerText);
+
+        let orderData = {
+            table: tableNumber,
+            items: cart,
+            total: total
+        };
 
         fetch('/api/order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ table: tableNumber, items: cart, total: total })
+            body: JSON.stringify(orderData)
         })
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
-                alert('🎉 訂單已成功送出！店家正在為您準備。');
+                alert('🎉 訂單已成功送出！請等候店家製作。');
                 cart = [];
                 updateCartUI();
             } else {
                 alert('送出失敗：' + data.message);
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('送出訂單發生錯誤，請稍後再試');
+        .catch(err => {
+            console.error(err);
+            alert('網路連線發生錯誤，請稍後再試');
         });
     }
-    {% if item.is_sold_out %}
-    <button disabled style="background-color: #ccc; cursor: not-allowed;">已售罄</button>
-{% else %}
-    <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加到購物車</button>
-{% endif %}
 </script>
 </body>
 </html>
