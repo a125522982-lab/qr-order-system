@@ -42,10 +42,10 @@
         .option-btn { padding: 8px 14px; border: 1px solid #ced4da; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; font-weight: 500; }
         .option-btn.selected { background: #e63946; color: white; border-color: #e63946; }
         
-        /* 複選方格群組 */
+        /* 複選方格群組 (支援完美複選) */
         .checkbox-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
-        .checkbox-item { display: flex; align-items: center; gap: 6px; background: #f8f9fa; padding: 8px; border-radius: 6px; border: 1px solid #ced4da; font-size: 14px; cursor: pointer; }
-        .checkbox-item input { width: 18px; height: 18px; accent-color: #e63946; }
+        .checkbox-item { display: flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ced4da; font-size: 14px; cursor: pointer; user-select: none; }
+        .checkbox-item input { width: 18px; height: 18px; accent-color: #e63946; cursor: pointer; }
 
         .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
         .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
@@ -168,7 +168,17 @@
             </div>
         </div>
 
-        <!-- 點選全雞餐才顯示的附餐 3 項複選區塊 -->
+        <!-- 炸全雞與全雞餐專用的醬料二選區塊 -->
+        <div id="sauce-section" style="display: none;">
+            <div class="modal-option-title" style="color: #e63946;">🥣 請選擇醬料（剛好 2 樣）：</div>
+            <div class="checkbox-group">
+                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="番茄醬"> 番茄醬</label>
+                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="起司醬"> 起司醬</label>
+                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="香菜檸檬醬"> 香菜檸檬醬</label>
+            </div>
+        </div>
+
+        <!-- 全雞餐專用的附餐三選區塊 -->
         <div id="chicken-sides-section" style="display: none;">
             <div class="modal-option-title" style="color: #d90429;">🍗 請選擇 3 樣附餐（可複選）：</div>
             <div class="checkbox-group">
@@ -214,14 +224,11 @@
     let isCompletedAlertTriggered = false;
     const alertAudio = document.getElementById('customer-alert-sound');
 
-    // 確保點擊網頁任意處即可解鎖音效播放權限
     document.addEventListener('click', () => {
-        if (alertAudio.paused) {
-            alertAudio.load();
-        }
+        if (alertAudio.paused) { alertAudio.load(); }
     }, { once: true });
 
-    let currentModalItem = { id: '', name: '', price: 0, qty: 1, pepper: '要胡椒', spicy: '不辣', category: '', isSpecial: false };
+    let currentModalItem = { id: '', name: '', price: 0, qty: 1, pepper: '要胡椒', spicy: '不辣', category: '' };
 
     function filterMenu(category, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -243,24 +250,33 @@
         document.getElementById('modal-qty').innerText = '1';
 
         let seasoningSec = document.getElementById('seasoning-section');
+        let sauceSec = document.getElementById('sauce-section');
         let chickenSidesSec = document.getElementById('chicken-sides-section');
 
-        // 判斷是否為「飲料」或特定免調味品項（煉香花月圓、煉乳銀絲卷）
         let isOnlyQty = (category === 'drink' || name.includes('煉香花月圓') || name.includes('煉乳銀絲卷'));
-        
-        // 判斷是否為全雞餐系列
-        let isChickenMeal = (name.includes('全雞餐') || name.includes('炸全雞'));
+        let isFriedWholeChicken = (name.includes('炸全雞'));
+        let isChickenMeal = (name.includes('全雞餐'));
 
         if (isOnlyQty) {
             seasoningSec.style.display = 'none';
+            sauceSec.style.display = 'none';
             chickenSidesSec.style.display = 'none';
+        } else if (isFriedWholeChicken) {
+            seasoningSec.style.display = 'none'; // 炸全雞去除胡椒辣椒
+            sauceSec.style.display = 'block';    // 醬料 3 選 2
+            chickenSidesSec.style.display = 'none';
+            document.querySelectorAll('input[name="chicken-sauce"]').forEach(cb => cb.checked = false);
         } else if (isChickenMeal) {
             seasoningSec.style.display = 'block';
-            chickenSidesSec.style.display = 'block';
-            // 清空所有勾選
+            sauceSec.style.display = 'block';    // 醬料 3 選 2
+            chickenSidesSec.style.display = 'block'; // 附餐 19 選 3
+            document.querySelectorAll('input[name="chicken-sauce"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('input[name="chicken-side"]').forEach(cb => cb.checked = false);
+            resetOptionGroup('pepper-options', '要胡椒');
+            resetOptionGroup('spicy-options', '不辣');
         } else {
             seasoningSec.style.display = 'block';
+            sauceSec.style.display = 'none';
             chickenSidesSec.style.display = 'none';
             resetOptionGroup('pepper-options', '要胡椒');
             resetOptionGroup('spicy-options', '不辣');
@@ -302,11 +318,31 @@
     function confirmAddToCart() {
         let specText = "";
         let isOnlyQty = (currentModalItem.category === 'drink' || currentModalItem.name.includes('煉香花月圓') || currentModalItem.name.includes('煉乳銀絲卷'));
-        let isChickenMeal = (currentModalItem.name.includes('全雞餐') || currentModalItem.name.includes('炸全雞'));
+        let isFriedWholeChicken = (currentModalItem.name.includes('炸全雞'));
+        let isChickenMeal = (currentModalItem.name.includes('全雞餐'));
 
         if (isOnlyQty) {
             specText = "標準";
+        } else if (isFriedWholeChicken) {
+            let selectedSauces = [];
+            document.querySelectorAll('input[name="chicken-sauce"]:checked').forEach(cb => {
+                selectedSauces.push(cb.value);
+            });
+            if (selectedSauces.length !== 2) {
+                alert('【炸全雞】醬料請務必剛好選擇 2 樣！');
+                return;
+            }
+            specText = `醬料: ${selectedSauces.join(', ')} | 胡椒、辣椒另外附`;
         } else if (isChickenMeal) {
+            let selectedSauces = [];
+            document.querySelectorAll('input[name="chicken-sauce"]:checked').forEach(cb => {
+                selectedSauces.push(cb.value);
+            });
+            if (selectedSauces.length !== 2) {
+                alert('【全雞餐】醬料請務必剛好選擇 2 樣！');
+                return;
+            }
+
             let selectedSides = [];
             document.querySelectorAll('input[name="chicken-side"]:checked').forEach(cb => {
                 selectedSides.push(cb.value);
@@ -315,7 +351,7 @@
                 alert('【全雞餐】附餐請務必剛好選擇 3 樣！');
                 return;
             }
-            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 附餐: ${selectedSides.join(', ')}`;
+            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${selectedSauces.join(', ')} | 附餐: ${selectedSides.join(', ')}`;
         } else {
             specText = `${currentModalItem.pepper}/${currentModalItem.spicy}`;
         }
@@ -498,12 +534,9 @@
                         if(cancelBtn) cancelBtn.style.display = 'none';
                         document.getElementById('finish-order-btn').style.display = 'block';
 
-                        // 修復提醒音：確認只觸發一次警報音
                         if (!isCompletedAlertTriggered) {
                             isCompletedAlertTriggered = true;
-                            alertAudio.play().catch(err => {
-                                console.log("音效自動播放遭到瀏覽器阻擋，等待互動解鎖");
-                            });
+                            alertAudio.play().catch(err => {});
                         }
                     } else if (order.status === 'cancelled') {
                         alert('❌ 您的訂單已被取消');
