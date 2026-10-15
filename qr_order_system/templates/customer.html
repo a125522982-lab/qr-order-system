@@ -37,7 +37,7 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 查詢我的訂單區塊 (讓客人隨時可透過電話末四碼找回訂單) -->
+    <!-- 查詢我的訂單區塊 -->
     <div class="search-section">
         <h2>🔍 查詢我的訂單</h2>
         <div class="search-box">
@@ -98,7 +98,6 @@
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
             <div id="est-time-container" style="font-size: 16px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
             
-            <!-- 等待接受期間允許客人取消訂單 -->
             <button id="cancel-order-btn" class="danger" style="padding: 6px 12px; margin-bottom: 10px; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
@@ -221,7 +220,6 @@
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                currentOrderId = data.order_id;
                 loadTrackerView(data.order_id);
             } else {
                 alert('送出失敗：' + data.message);
@@ -229,7 +227,6 @@
         });
     }
 
-    // 透過訂單 ID 載入追蹤畫面
     async function loadTrackerView(orderId) {
         currentOrderId = orderId;
         isCompletedAlertTriggered = false;
@@ -243,6 +240,7 @@
                 
                 document.getElementById('order-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
+                document.getElementById('finish-order-btn').style.display = 'none';
                 
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
@@ -260,7 +258,6 @@
         }
     }
 
-    // 客戶端自行輸入末四碼查詢訂單
     async function searchMyOrder() {
         let phone4 = document.getElementById('search-phone4').value.trim();
         if (phone4.length !== 4 || isNaN(phone4)) {
@@ -273,6 +270,11 @@
             let data = await res.json();
             
             if (data.success) {
+                // 若搜尋到的訂單已經是 completed 狀態，直接返回並提示，避免誤觸發循環響鈴
+                if (data.order.status === 'completed') {
+                    alert('這筆訂單已經完成取餐囉！若要重新點餐請直接使用下方菜單。');
+                    return;
+                }
                 loadTrackerView(data.order.id);
             } else {
                 alert('找不到該末四碼對應的進行中訂單');
@@ -300,12 +302,12 @@
                     if (order.status === 'pending') {
                         statusEl.innerText = '⏳ 狀態：等待店家接受訂單中...';
                         statusEl.style.color = '#b5838d';
-                        cancelBtn.style.display = 'inline-block'; // 待處理時允許取消
+                        cancelBtn.style.display = 'inline-block';
                         estTimeContainer.innerText = '';
                     } else if (order.status === 'accepted') {
                         statusEl.innerText = '🔥 狀態：店家已接受，正在為您製作中！';
                         statusEl.style.color = '#e76f51';
-                        cancelBtn.style.display = 'none'; // 已接受後不可隨便取消
+                        cancelBtn.style.display = 'none';
                         if (order.est_time) {
                             estTimeContainer.innerText = `⏱️ 預估取餐時間：${order.est_time}`;
                         }
@@ -330,7 +332,6 @@
         }, 3000);
     }
 
-    // 客戶主動取消訂單
     function cancelMyOrder() {
         if (!confirm('確定要取消這筆訂單嗎？')) return;
         
@@ -353,16 +354,20 @@
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         
+        // 確實關閉並重置音訊
         alertAudio.pause();
         alertAudio.currentTime = 0;
 
+        // 清空相關變數，切斷與舊訂單的關聯
         cart = [];
         updateCartUI();
         currentOrderId = null;
         isCompletedAlertTriggered = false;
 
+        // 切回點餐頁面
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
+        document.getElementById('search-phone4').value = '';
     }
 </script>
 </body>
