@@ -8,53 +8,52 @@ app = Flask(__name__)
 MENU_FILE = "menu.json"
 
 default_menu = {
-    "101": {"name": "無骨雞腿排", "price": 90},
-    "102": {"name": "脆皮香雞排", "price": 75},
-    "103": {"name": "雞腿", "price": 55},
-    "104": {"name": "雞塊", "price": 55},
-    "105": {"name": "雞翅", "price": 35},
-    "106": {"name": "乳酪棒 (4)", "price": 50},
-    "107": {"name": "芋泥球 (8)", "price": 50},
-    "108": {"name": "起司球 (4)", "price": 50},
-    "109": {"name": "甜不辣", "price": 35},
-    "110": {"name": "百頁豆腐", "price": 30},
-    "111": {"name": "米血 (6)", "price": 30},
-    "112": {"name": "帶皮薯瓣", "price": 60},
-    "113": {"name": "杏鮑菇", "price": 55},
-    "114": {"name": "深海鱈魚條 (2)", "price": 40},
-    "115": {"name": "娘惹山藥捲 (4)", "price": 40},
-    "116": {"name": "雞軟骨", "price": 60},
-    "117": {"name": "魷米花", "price": 60},
-    "118": {"name": "嗑嗑雞丁", "price": 65},
-    "119": {"name": "雞皮", "price": 40},
-    "120": {"name": "美式脆薯", "price": 45},
-    "121": {"name": "薯餅 (4)", "price": 40},
-    "122": {"name": "花枝丸 (5)", "price": 40},
-    "123": {"name": "麥嗑雞塊 (5)", "price": 45},
-    "124": {"name": "洋蔥圈 (6)", "price": 40},
-    "125": {"name": "煉香花月圓", "price": 40},
-    "126": {"name": "煉乳銀絲卷 (4)", "price": 40},
-    "127": {"name": "椒鹽銀絲卷 (4)", "price": 30},
-    "128": {"name": "黃金地瓜條", "price": 50},
-    "129": {"name": "起司薯球 (6)", "price": 50},
-    "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100},
-    "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120},
-    "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140},
-    "204": {"name": "4號餐 (雞腿+雞塊+雞翅+飲料)", "price": 155},
-    "205": {"name": "5號餐 (雞排+美式脆薯+飲料)", "price": 125},
-    "206": {"name": "全家桶", "price": 339},
-    "207": {"name": "超值全家桶", "price": 449},
-    "208": {"name": "炸全雞", "price": 429},
-    "209": {"name": "全雞餐", "price": 579},
-    "210": {"name": "雞翅滿足桶", "price": 399},
-    "211": {"name": "雞塊滿足桶", "price": 399},
-    "212": {"name": "雞腿滿足桶", "price": 399},
+    "101": {"name": "無骨雞腿排", "price": 90, "is_sold_out": False},
+    "102": {"name": "脆皮香雞排", "price": 75, "is_sold_out": False},
+    "103": {"name": "雞腿", "price": 55, "is_sold_out": False},
+    "104": {"name": "雞塊", "price": 55, "is_sold_out": False},
+    "105": {"name": "雞翅", "price": 35, "is_sold_out": False},
+    "106": {"name": "乳酪棒 (4)", "price": 50, "is_sold_out": False},
+    "107": {"name": "芋泥球 (8)", "price": 50, "is_sold_out": False},
+    "108": {"name": "起司球 (4)", "price": 50, "is_sold_out": False},
+    "109": {"name": "甜不辣", "price": 35, "is_sold_out": False},
+    "110": {"name": "百頁豆腐", "price": 30, "is_sold_out": False},
+    "111": {"name": "米血 (6)", "price": 30, "is_sold_out": False},
+    "112": {"name": "帶皮薯瓣", "price": 60, "is_sold_out": False},
+    "113": {"name": "杏鮑菇", "price": 55, "is_sold_out": False},
+    "114": {"name": "深海鱈魚條 (2)", "price": 40, "is_sold_out": False},
+    "115": {"name": "娘惹山藥捲 (4)", "price": 40, "is_sold_out": False},
+    "116": {"name": "雞軟骨", "price": 60, "is_sold_out": False},
+    "117": {"name": "魷米花", "price": 60, "is_sold_out": False},
+    "118": {"name": "嗑嗑雞丁", "price": 65, "is_sold_out": False},
+    "119": {"name": "雞皮", "price": 40, "is_sold_out": False},
+    "120": {"name": "美式脆薯", "price": 45, "is_sold_out": False},
+    "121": {"name": "薯餅 (4)", "price": 40, "is_sold_out": False},
+    "122": {"name": "花枝丸 (5)", "price": 40, "is_sold_out": False},
+    "123": {"name": "麥嗑雞塊 (5)", "price": 45, "is_sold_out": False},
+    "124": {"name": "洋蔥圈 (6)", "price": 40, "is_sold_out": False},
+    "125": {"name": "煉香花月圓", "price": 40, "is_sold_out": False},
+    "126": {"name": "煉乳銀絲卷 (4)", "price": 40, "is_sold_out": False},
+    "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "is_sold_out": False},
+    "128": {"name": "黃金地瓜條", "price": 50, "is_sold_out": False},
+    "129": {"name": "起司薯球 (6)", "price": 50, "is_sold_out": False},
+    "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "is_sold_out": False},
+    "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "is_sold_out": False},
+    "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "is_sold_out": False},
+    "204": {"name": "4號餐 (雞腿+雞塊+雞翅+飲料)", "price": 155, "is_sold_out": False},
+    "205": {"name": "5號餐 (雞排+美式脆薯+飲料)", "price": 125, "is_sold_out": False},
+    "206": {"name": "全家桶", "price": 339, "is_sold_out": False},
+    "207": {"name": "超值全家桶", "price": 449, "is_sold_out": False},
+    "208": {"name": "炸全雞", "price": 429, "is_sold_out": False},
+    "209": {"name": "全雞餐", "price": 579, "is_sold_out": False},
+    "210": {"name": "雞翅滿足桶", "price": 399, "is_sold_out": False},
+    "211": {"name": "雞塊滿足桶", "price": 399, "is_sold_out": False},
+    "212": {"name": "雞腿滿足桶", "price": 399, "is_sold_out": False},
 }
 
-# 三個狀態的訂單列表
-ORDERS = []             # 即時進來的訂單 (待處理)
-ACCEPTED_ORDERS = []    # 已經接受的訂單 (製作中)
-COMPLETED_ORDERS = []   # 已完成歷史訂單
+ORDERS = []
+ACCEPTED_ORDERS = []
+COMPLETED_ORDERS = []
 
 
 def load_menu():
@@ -65,6 +64,10 @@ def load_menu():
         with open(MENU_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if data and isinstance(data, dict):
+                # 確保每個品項都有 is_sold_out 欄位
+                for item_id, item_info in data.items():
+                    if "is_sold_out" not in item_info:
+                        item_info["is_sold_out"] = False
                 return data
     except Exception:
         pass
@@ -96,7 +99,6 @@ def admin_page():
     global ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS
     current_menu = load_menu()
     
-    # 清洗資料防呆
     def clean_list(lst):
         cleaned = []
         for o in lst:
@@ -135,6 +137,28 @@ def handle_menu():
     return jsonify(load_menu())
 
 
+# 切換售罄狀態的 API
+@app.route("/api/menu/toggle_soldout", methods=["POST"])
+def toggle_soldout():
+    try:
+        data = request.get_json(silent=True)
+        if not data or "item_id" not in data:
+            return jsonify({"success": False, "message": "無效的品項代號"}), 400
+
+        item_id = str(data["item_id"])
+        menu = load_menu()
+
+        if item_id in menu:
+            current_status = menu[item_id].get("is_sold_out", False)
+            menu[item_id]["is_sold_out"] = not current_status
+            save_menu(menu)
+            return jsonify({"success": True, "is_sold_out": menu[item_id]["is_sold_out"]})
+
+        return jsonify({"success": False, "message": "找不到該品項"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @app.route("/api/order", methods=["POST"])
 def place_order():
     try:
@@ -167,7 +191,6 @@ def place_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 接受訂單 (從 ORDERS 移到 ACCEPTED_ORDERS)
 @app.route("/api/order/accept", methods=["POST"])
 def accept_order():
     try:
@@ -191,7 +214,6 @@ def accept_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 完成訂單 (從 ACCEPTED_ORDERS 移到 COMPLETED_ORDERS)
 @app.route("/api/order/complete", methods=["POST"])
 def complete_order():
     try:
