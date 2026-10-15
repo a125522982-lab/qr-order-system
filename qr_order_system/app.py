@@ -92,6 +92,14 @@ COMPLETED_ORDERS = []
 CANCELLED_ORDERS = []
 
 
+def safe_int(val, default=0):
+    """安全轉換整數，防止任何型態錯誤導致 500"""
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
 def load_menu():
     if not os.path.exists(MENU_FILE):
         with open(MENU_FILE, "w", encoding="utf-8") as f:
@@ -183,7 +191,7 @@ def admin_page():
                         "phone": phone,
                         "phone_last4": phone_last4,
                         "food_list": fl,
-                        "total": int(o.get("total", 0)),
+                        "total": safe_int(o.get("total", 0)),
                         "status": status,
                         "est_time": str(o.get("est_time", ""))
                     })
@@ -199,7 +207,7 @@ def admin_page():
     for o in COMPLETED_ORDERS:
         for item in o["food_list"]:
             name = item["name"]
-            qty = int(item.get("quantity", 1))
+            qty = safe_int(item.get("quantity", 1), 1)
             item_stats[name] = item_stats.get(name, 0) + qty
 
     return render_template(
@@ -295,8 +303,8 @@ def place_order():
                 if isinstance(item, dict):
                     safe_item_list.append({
                         "name": str(item.get("name", "未知餐點")),
-                        "price": int(item.get("price", 0)),
-                        "quantity": int(item.get("quantity", 1)),
+                        "price": safe_int(item.get("price", 0)),
+                        "quantity": safe_int(item.get("quantity", 1), 1),
                     })
 
         phone = str(data.get("phone", "0000000000"))
@@ -309,7 +317,7 @@ def place_order():
             "phone": phone,
             "phone_last4": phone_last4,
             "food_list": safe_item_list,
-            "total": int(data.get("total", 0)),
+            "total": safe_int(data.get("total", 0)),
             "status": "pending",
             "est_time": ""
         }
@@ -317,7 +325,7 @@ def place_order():
         ORDERS.append(new_order)
         return jsonify({"success": True, "order_id": order_id, "message": "ok"})
     except Exception as e:
-        print("❌ 下單 API 發生錯誤:", str(e))  # 這行會把詳細錯誤印在您的終端機視窗供檢查
+        print("❌ 下單 API 發生錯誤:", str(e))
         return jsonify({"success": False, "message": str(e)}), 500
 
 
