@@ -34,17 +34,16 @@
                         <div>
                             <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
-                            {% if order.items is iterable and order.items is not string %}
+                            {% if order.items %}
                                 {% for i in order.items %}
-                                    <!-- 確保正確印出餐點名稱與數量 -->
                                     <span>{{ i.name }} x {{ i.quantity }}</span>{% if not loop.last %}, {% endif %}
                                 {% endfor %}
                             {% else %}
-                                {{ order.items }}
+                                無品項資料
                             {% endif %}
                         </div>
                         <div>
-                            <button class="success" onclick="completeOrder({{ loop.index0 }})">完成訂單</button>
+                            <button class="success" onclick="completeOrder('{{ order.id }}')">完成訂單</button>
                         </div>
                     </div>
                 {% endfor %}
@@ -160,19 +159,23 @@
     }
 
     // 點擊「完成訂單」
-    function completeOrder(index) {
+    function completeOrder(orderId) {
         fetch('/api/order/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ index: index })
+            body: JSON.stringify({ order_id: orderId })
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                location.reload(); // 重新整理後台，訂單會自動移動到下方已完成區塊
+                location.reload();
             } else {
                 alert('操作失敗：' + data.message);
             }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('發生網路錯誤');
         });
     }
 </script>
