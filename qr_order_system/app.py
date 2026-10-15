@@ -132,6 +132,13 @@ def customer_menu():
 
 @app.route("/admin")
 def admin_page():
+    item_stats = {}
+    for o in COMPLETED_ORDERS:
+        for item in o.get("food_list", []):
+            name = item.get("name", "未知品項")
+            qty = item.get("quantity", 1)
+            item_stats[name] = item_stats.get(name, 0) + qty
+
     return render_template(
         "admin.html",
         menu=load_menu(),
@@ -140,8 +147,18 @@ def admin_page():
         accepted_orders=ACCEPTED_ORDERS,
         completed_orders=COMPLETED_ORDERS,
         cancelled_orders=CANCELLED_ORDERS,
-        total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS)
+        total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
+        item_stats=item_stats
     )
+
+# 提供給前端輪詢檢查訂單數量的 API
+@app.route("/api/admin/check_orders", methods=["GET"])
+def api_check_orders():
+    return jsonify({
+        "pending_count": len(ORDERS),
+        "accepted_count": len(ACCEPTED_ORDERS),
+        "completed_count": len(COMPLETED_ORDERS)
+    })
 
 @app.route("/api/hours/save", methods=["POST"])
 def update_hours():
@@ -151,6 +168,20 @@ def update_hours():
             save_hours(data)
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "無效資料"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route("/api/menu/toggle_soldout", methods=["POST"])
+def toggle_soldout():
+    try:
+        data = request.get_json(silent=True)
+        item_id = str(data.get("item_id", ""))
+        menu = load_menu()
+        if item_id in menu:
+            menu[item_id]["is_sold_out"] = not menu[item_id].get("is_sold_out", False)
+            save_menu(menu)
+            return jsonify({"success": True})
+        return jsonify({"success": False, "message": "找不到該品項"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
