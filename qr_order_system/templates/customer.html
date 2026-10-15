@@ -43,18 +43,18 @@
         .option-btn { padding: 8px 14px; border: 1px solid #ced4da; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; font-weight: 500; }
         .option-btn.selected { background: #e63946; color: white; border-color: #e63946; }
         
-        /* 數量加減小工具列 */
         .sub-item-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e9ecef; }
         .sub-item-name { font-size: 14px; font-weight: 500; }
         .sub-controls { display: flex; align-items: center; gap: 10px; }
         .sub-btn { width: 28px; height: 28px; border-radius: 50%; background: #dee2e6; color: #333; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .sub-btn:active { background: #adb5bd; }
 
         .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
         .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
         .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 20px 15px; border-radius: 10px; text-align: center; }
         .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 15px 0; }
         .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
+        .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
+        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 20px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -72,53 +72,66 @@
         </div>
     </div>
 
-    <div id="order-view">
-        <div class="category-tabs">
-            <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
-            <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
-            <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
-            <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
-            <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
-            <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
-            <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
+    {% if not is_open %}
+        <div class="closed-banner">
+            🔴 目前為非營業時間，暫停線上點餐！<br>
+            <span style="font-size: 14px; font-weight: normal; margin-top: 8px; display: inline-block;">
+                營業時間：<br>
+                週三、週四：11:30 - 19:30<br>
+                週五、週六：11:30 - 21:30<br>
+                週日：11:30 - 20:00<br>
+                (週一、週二公休)
+            </span>
         </div>
+    {% else %}
+        <div id="order-view">
+            <div class="category-tabs">
+                <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
+                <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
+                <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
+                <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
+                <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
+                <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
+                <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
+            </div>
 
-        <div class="menu-grid" id="menu-grid">
-            {% for id, item in menu.items() %}
-                <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
-                    <div class="item-info">
-                        <div class="item-name">{{ item.get('name', '') }}</div>
-                        <div class="item-price">${{ item.get('price', 0) }}</div>
+            <div class="menu-grid" id="menu-grid">
+                {% for id, item in menu.items() %}
+                    <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
+                        <div class="item-info">
+                            <div class="item-name">{{ item.get('name', '') }}</div>
+                            <div class="item-price">${{ item.get('price', 0) }}</div>
+                        </div>
+                        <div>
+                            <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
+                        </div>
                     </div>
-                    <div>
-                        <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
+                {% endfor %}
+            </div>
 
-        <div class="cart-section">
-            <h2>🛒 您的購物車</h2>
-            <table class="cart-table">
-                <thead>
-                    <tr>
-                        <th>品名與口味</th>
-                        <th>單價</th>
-                        <th>數量</th>
-                        <th>小計</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="cart-body">
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-price">總金額: $<span id="total-amount">0</span></div>
-            <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
+            <div class="cart-section">
+                <h2>🛒 您的購物車</h2>
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>品名與口味</th>
+                            <th>單價</th>
+                            <th>數量</th>
+                            <th>小計</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="total-price">總金額: $<span id="total-amount">0</span></div>
+                <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
+            </div>
         </div>
-    </div>
+    {% endif %}
 
     <div id="tracker-view" style="display: none;" class="tracker-section">
         <h2>📋 訂單狀態追蹤</h2>
@@ -171,8 +184,11 @@
             </div>
         </div>
 
-        <!-- 醬料選擇區塊 (上限 2 份) -->
+        <!-- 醬料選擇區塊 -->
         <div id="sauce-section" style="display: none;">
+            <div id="whole-chicken-notice" class="notice-banner" style="display: none;">
+                ⚠️ 提示：本餐點胡椒、辣椒一律另外附！
+            </div>
             <div class="modal-option-title" style="color: #e63946;">
                 🥣 醬料選擇
                 <span class="limit-hint">已選 <span id="sauce-count">0</span> / 2 份</span>
@@ -205,14 +221,14 @@
             </div>
         </div>
 
-        <!-- 附餐選擇區塊 (上限 3 份) -->
+        <!-- 附餐選擇區塊 -->
         <div id="chicken-sides-section" style="display: none;">
             <div class="modal-option-title" style="color: #d90429;">
                 🍗 附餐選擇
                 <span class="limit-hint">已選 <span id="side-count">0</span> / 3 份</span>
             </div>
             <div id="sides-list-container">
-                <!-- 動態帶入 19 種附餐供加減 -->
+                <!-- 動態帶入 19 種附餐 -->
             </div>
         </div>
 
@@ -282,6 +298,7 @@
         let seasoningSec = document.getElementById('seasoning-section');
         let sauceSec = document.getElementById('sauce-section');
         let chickenSidesSec = document.getElementById('chicken-sides-section');
+        let wholeChickenNotice = document.getElementById('whole-chicken-notice');
 
         let isOnlyQty = (category === 'drink' || name.includes('煉香花月圓') || name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (name.includes('炸全雞'));
@@ -292,13 +309,15 @@
             sauceSec.style.display = 'none';
             chickenSidesSec.style.display = 'none';
         } else if (isFriedWholeChicken) {
-            seasoningSec.style.display = 'none'; // 炸全雞去除胡椒辣椒
+            seasoningSec.style.display = 'none'; // 炸全雞不選胡椒辣椒
             sauceSec.style.display = 'block';
+            wholeChickenNotice.style.display = 'block'; // 顯示醒目標示
             chickenSidesSec.style.display = 'none';
             renderSaucesUI();
         } else if (isChickenMeal) {
             seasoningSec.style.display = 'block';
             sauceSec.style.display = 'block';
+            wholeChickenNotice.style.display = 'none';
             chickenSidesSec.style.display = 'block';
             renderSaucesUI();
             renderSidesUI();
