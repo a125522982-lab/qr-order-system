@@ -28,6 +28,7 @@
         .finish-btn { width: 100%; padding: 12px; background: #dc3545; font-size: 18px; margin-top: 15px; }
         .search-box { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
         .search-box input { padding: 8px; width: 150px; font-size: 16px; }
+        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 20px; border-radius: 6px; text-align: center; font-size: 20px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -37,7 +38,7 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 查詢我的訂單區塊 -->
+    <!-- 查詢我的訂單區塊 (即便非營業時間也可查詢現有訂單) -->
     <div class="search-section">
         <h2>🔍 查詢我的訂單</h2>
         <div class="search-box">
@@ -46,49 +47,56 @@
         </div>
     </div>
 
-    <!-- 點餐與購物車主畫面 -->
-    <div id="order-view">
-        <h2>線上菜單</h2>
-        <div class="menu-grid">
-            {% for id, item in menu.items() %}
-                <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}">
-                    <div>
-                        <div class="item-name">{{ item.name }}</div>
-                        <div class="item-price">${{ item.price }}</div>
-                    </div>
-                    <div>
-                        {% if item.is_sold_out %}
-                            <button class="sold-out-btn" disabled>已售罄</button>
-                        {% else %}
-                            <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加入購物車</button>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endfor %}
+    {% if not is_open %}
+        <!-- 非營業時間提示 banner -->
+        <div class="closed-banner">
+            🔴 目前為非營業時間（今日營業時段：{{ hours.open }} - {{ hours.close }}），暫停線上點餐！
         </div>
+    {% else %}
+        <!-- 點餐與購物車主畫面 -->
+        <div id="order-view">
+            <h2>線上菜單</h2>
+            <div class="menu-grid">
+                {% for id, item in menu.items() %}
+                    <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}">
+                        <div>
+                            <div class="item-name">{{ item.name }}</div>
+                            <div class="item-price">${{ item.price }}</div>
+                        </div>
+                        <div>
+                            {% if item.is_sold_out %}
+                                <button class="sold-out-btn" disabled>已售罄</button>
+                            {% else %}
+                                <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加入購物車</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
 
-        <div class="cart-section">
-            <h2>🛒 您的購物車</h2>
-            <table class="cart-table">
-                <thead>
-                    <tr>
-                        <th>品名</th>
-                        <th>單價</th>
-                        <th>數量</th>
-                        <th>小計</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="cart-body">
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-price">總金額: $<span id="total-amount">0</span></div>
-            <button class="checkout-btn" onclick="promptCheckout()">送出訂單</button>
+            <div class="cart-section">
+                <h2>🛒 您的購物車</h2>
+                <table class="cart-table">
+                    <thead>
+                        <tr>
+                            <th>品名</th>
+                            <th>單價</th>
+                            <th>數量</th>
+                            <th>小計</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cart-body">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="total-price">總金額: $<span id="total-amount">0</span></div>
+                <button class="checkout-btn" onclick="promptCheckout()">送出訂單</button>
+            </div>
         </div>
-    </div>
+    {% endif %}
 
     <!-- 送出後的訂單明細與狀態追蹤畫面 -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
@@ -238,7 +246,8 @@
             if (data.success) {
                 let order = data.order;
                 
-                document.getElementById('order-view').style.display = 'none';
+                let orderView = document.getElementById('order-view');
+                if (orderView) orderView.style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
                 document.getElementById('finish-order-btn').style.display = 'none';
                 
@@ -270,9 +279,8 @@
             let data = await res.json();
             
             if (data.success) {
-                // 若搜尋到的訂單已經是 completed 狀態，直接返回並提示，避免誤觸發循環響鈴
                 if (data.order.status === 'completed') {
-                    alert('這筆訂單已經完成取餐囉！若要重新點餐請直接使用下方菜單。');
+                    alert('這筆訂單已經完成取餐囉！');
                     return;
                 }
                 loadTrackerView(data.order.id);
@@ -302,19 +310,19 @@
                     if (order.status === 'pending') {
                         statusEl.innerText = '⏳ 狀態：等待店家接受訂單中...';
                         statusEl.style.color = '#b5838d';
-                        cancelBtn.style.display = 'inline-block';
+                        if(cancelBtn) cancelBtn.style.display = 'inline-block';
                         estTimeContainer.innerText = '';
                     } else if (order.status === 'accepted') {
                         statusEl.innerText = '🔥 狀態：店家已接受，正在為您製作中！';
                         statusEl.style.color = '#e76f51';
-                        cancelBtn.style.display = 'none';
+                        if(cancelBtn) cancelBtn.style.display = 'none';
                         if (order.est_time) {
                             estTimeContainer.innerText = `⏱️ 預估取餐時間：${order.est_time}`;
                         }
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已製作完成，請至櫃檯憑電話後四碼取餐！';
                         statusEl.style.color = '#2a9d8f';
-                        cancelBtn.style.display = 'none';
+                        if(cancelBtn) cancelBtn.style.display = 'none';
                         estTimeContainer.innerText = '';
                         
                         document.getElementById('finish-order-btn').style.display = 'block';
@@ -354,19 +362,17 @@
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         
-        // 確實關閉並重置音訊
         alertAudio.pause();
         alertAudio.currentTime = 0;
 
-        // 清空相關變數，切斷與舊訂單的關聯
         cart = [];
         updateCartUI();
         currentOrderId = null;
         isCompletedAlertTriggered = false;
 
-        // 切回點餐頁面
         document.getElementById('tracker-view').style.display = 'none';
-        document.getElementById('order-view').style.display = 'block';
+        let orderView = document.getElementById('order-view');
+        if (orderView) orderView.style.display = 'block';
         document.getElementById('search-phone4').value = '';
     }
 </script>
