@@ -16,7 +16,6 @@ PRINTER_PORT = 9100
 # -----------------------------
 
 default_menu = {
-    # 1. 單點炸物 (101-129)
     "101": {"name": "無骨雞腿排", "price": 90, "category": "fried", "is_sold_out": False},
     "102": {"name": "脆皮香雞排", "price": 75, "category": "fried", "is_sold_out": False},
     "103": {"name": "雞腿", "price": 55, "category": "fried", "is_sold_out": False},
@@ -46,8 +45,6 @@ default_menu = {
     "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "category": "fried", "is_sold_out": False},
     "128": {"name": "黃金地瓜條", "price": 50, "category": "fried", "is_sold_out": False},
     "129": {"name": "起司薯球 (6)", "price": 50, "category": "fried", "is_sold_out": False},
-    
-    # 2. 超值套餐與滿足桶 (201-212)
     "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "category": "combo", "is_sold_out": False},
     "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "category": "combo", "is_sold_out": False},
     "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "category": "combo", "is_sold_out": False},
@@ -60,23 +57,17 @@ default_menu = {
     "210": {"name": "雞翅滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
     "211": {"name": "雞塊滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
     "212": {"name": "雞腿滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
-
-    # 3. 黃金切達起司系列 (301-306)
     "301": {"name": "切達起司雞翅 (3)", "price": 120, "category": "cheese", "is_sold_out": False},
     "302": {"name": "切達起司雞里肌 (3)", "price": 70, "category": "cheese", "is_sold_out": False},
     "303": {"name": "切達起司脆皮香雞排", "price": 95, "category": "cheese", "is_sold_out": False},
     "304": {"name": "切達起司無骨雞腿排", "price": 110, "category": "cheese", "is_sold_out": False},
     "305": {"name": "切達起司嗑嗑雞丁", "price": 85, "category": "cheese", "is_sold_out": False},
     "306": {"name": "切達起司脆薯", "price": 65, "category": "cheese", "is_sold_out": False},
-
-    # 4. 香檸風味系列 (401-405)
     "401": {"name": "香檸雞翅 (3)", "price": 120, "category": "lemon", "is_sold_out": False},
     "402": {"name": "香檸雞里肌 (3)", "price": 70, "category": "lemon", "is_sold_out": False},
     "403": {"name": "香檸脆皮香雞排", "price": 95, "category": "lemon", "is_sold_out": False},
     "404": {"name": "香檸無骨雞腿排", "price": 110, "category": "lemon", "is_sold_out": False},
     "405": {"name": "香檸嗑嗑雞丁", "price": 85, "category": "lemon", "is_sold_out": False},
-
-    # 5. 飲料系列 (501-505)
     "501": {"name": "可樂 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
     "502": {"name": "雪碧 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
     "503": {"name": "芬達 (330c.c)", "price": 30, "category": "drink", "is_sold_out": False},
@@ -194,9 +185,7 @@ def admin_page():
                         "food_list": fl,
                         "total": int(o.get("total", 0)),
                         "status": status,
-                        "est_time": str(o.get("est_time", "")),
-                        "spicy": str(o.get("spicy", "不辣")),
-                        "pepper": str(o.get("pepper", "要"))
+                        "est_time": str(o.get("est_time", ""))
                     })
         return cleaned
 
@@ -322,14 +311,13 @@ def place_order():
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
             "status": "pending",
-            "est_time": "",
-            "spicy": str(data.get("spicy", "不辣")),
-            "pepper": str(data.get("pepper", "要"))
+            "est_time": ""
         }
 
         ORDERS.append(new_order)
         return jsonify({"success": True, "order_id": order_id, "message": "ok"})
     except Exception as e:
+        print("❌ 下單 API 發生錯誤:", str(e))  # 這行會把詳細錯誤印在您的終端機視窗供檢查
         return jsonify({"success": False, "message": str(e)}), 500
 
 
@@ -367,7 +355,6 @@ def accept_order():
                 print_data += f"桌號: {found_order['table']} 號桌\n".encode("big5", errors="ignore")
                 print_data += f"取餐末四碼: {found_order['phone_last4']}\n".encode("big5", errors="ignore")
                 print_data += f"預估時間: {found_order['est_time']}\n".encode("big5", errors="ignore")
-                print_data += f"口味: {found_order['spicy']} | 胡椒: {found_order['pepper']}\n".encode("big5", errors="ignore")
                 print_data += "--------------------------------\n".encode("big5", errors="ignore")
                 
                 for item in found_order['food_list']:
