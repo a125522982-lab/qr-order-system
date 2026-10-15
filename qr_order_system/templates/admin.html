@@ -251,13 +251,31 @@
 <audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
 
 <script>
-    let lastOrderCount = {{ orders | length }};
+    let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 點擊頁面解鎖音效播放權限
+    // 點擊頁面解鎖音效權限
     document.addEventListener('click', () => {
         if (adminAlertAudio.paused) { adminAlertAudio.load(); }
     }, { once: true });
+
+    // 自動輪詢：每 3 秒檢查一次是否有新訂單，有新訂單自動播放音效並重新整理
+    setInterval(async () => {
+        if (document.activeElement.tagName === "INPUT") return; // 正在輸入時不重新整理
+        try {
+            let res = await fetch('/api/admin/check_orders');
+            let data = await res.json();
+            if (data.pending_count > lastPendingCount) {
+                // 有新待處理訂單！播放音效並重新整理
+                adminAlertAudio.play().catch(err => {});
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else if (data.pending_count < lastPendingCount) {
+                lastPendingCount = data.pending_count;
+            }
+        } catch(e) {}
+    }, 3000);
 
     async function toggleForceClose() {
         let isChecked = document.getElementById('force-close-chk').checked;
@@ -388,18 +406,6 @@
         if (data.success) { location.reload(); }
         else { alert('操作失敗'); }
     }
-
-    // 自動輪詢檢查新訂單並播放音效
-    setInterval(async () => {
-        if (document.activeElement.tagName === "INPUT") return;
-        try {
-            let res = await fetch('/admin');
-            let parser = new DOMParser();
-            let doc = parser.parseFromString(await res.text(), 'text/html');
-            let newOrdersCount = doc.querySelectorAll('h3:contains("待處理訂單") + table tbody tr').length;
-            // 簡化判定：透過重新載入或檢查變化
-        } catch(e) {}
-    }, 5000);
 </script>
 </body>
 </html>
