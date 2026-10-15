@@ -27,7 +27,6 @@
         .stats-box, .hours-box { background: #e8f5e9; border: 1px solid #c8e6c9; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
         .hours-row { display: flex; gap: 15px; align-items: center; margin-bottom: 8px; }
 
-        /* 列印小票專用樣式 (平時隱藏，列印時顯示) */
         #print-ticket { display: none; }
         @media print {
             body * { visibility: hidden; }
@@ -247,7 +246,6 @@
     </div>
 </div>
 
-<!-- 廚房列印專用小票容器 -->
 <div id="print-ticket">
     <h2 style="text-align: center; margin: 0;">🍗 酷嗑斯美式炸雞 🍗</h2>
     <h3 style="text-align: center; margin: 5px 0 15px 0;">【廚房出單小票】</h3>
@@ -304,7 +302,6 @@
         } catch (err) {}
     }, 3000);
 
-    // 接受訂單並自動列印廚房小票
     function acceptAndPrintOrder(orderId) {
         let card = document.getElementById('order-' + orderId);
         if (card) {
@@ -315,7 +312,6 @@
             let total = card.getAttribute('data-total');
             let items = JSON.parse(card.getAttribute('data-items'));
 
-            // 填入列印範本
             document.getElementById('p-table').innerText = table;
             document.getElementById('p-phone').innerText = phone;
             document.getElementById('p-spicy').innerText = spicy;
@@ -328,11 +324,9 @@
             });
             document.getElementById('p-items').innerHTML = itemsHtml;
 
-            // 觸發瀏覽器列印
             window.print();
         }
 
-        // 執行後台接受訂單 API
         let estSelect = document.getElementById('est-time-' + orderId);
         let estTime = estSelect ? estSelect.value : '15分鐘';
         
