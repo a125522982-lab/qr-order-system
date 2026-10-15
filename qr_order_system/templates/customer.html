@@ -2,45 +2,62 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>酷嗑斯美式炸雞 - 線上點餐</title>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; text-align: center; }
-        .table-badge { background: #ffc107; padding: 6px 12px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; color: #333; }
         
-        /* 分類標籤樣式 */
-        .category-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
-        .tab-btn { padding: 8px 16px; background: #e9ecef; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; color: #495057; }
-        .tab-btn.active { background: #007bff; color: white; }
-
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-bottom: 30px; }
-        .menu-item { border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
-        .menu-item.sold-out { background: #f1f1f1; opacity: 0.7; }
-        .item-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
-        .item-price { color: #e63946; font-weight: bold; margin-bottom: 10px; }
-        button { padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        button.sold-out-btn { background: #6c757d; cursor: not-allowed; }
-        button.danger { background: #dc3545; }
-        .cart-section, .tracker-section, .search-section { border-top: 2px solid #eee; padding-top: 20px; margin-top: 20px; }
+        /* 手機滿版佈局，取消左右留白 */
+        .container { width: 100%; min-height: 100vh; background: white; padding: 12px; padding-bottom: 100px; }
         
-        /* 口味偏好設定區塊 */
-        .preferences-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-        .prefs-group { margin-bottom: 10px; }
-        .prefs-group label { margin-right: 15px; font-weight: bold; cursor: pointer; }
+        h1 { font-size: 24px; text-align: center; margin: 10px 0 5px 0; color: #111; }
+        .table-badge { background: #ffc107; color: #222; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 15px; }
+        
+        /* 查詢訂單區塊 */
+        .search-section { background: #fff8e1; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 1px solid #ffe082; }
+        .search-box { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
+        .search-box input { padding: 8px 12px; width: 180px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+        
+        /* 橫向滾動分類標籤列 (像 App 一樣) */
+        .category-tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding-bottom: 8px; margin-bottom: 15px; scrollbar-width: none; }
+        .category-tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { padding: 8px 16px; background: #e9ecef; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; color: #495057; font-size: 15px; flex-shrink: 0; }
+        .tab-btn.active { background: #e63946; color: white; }
 
-        .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        .cart-table th, .cart-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        .cart-table th { background: #f2f2f2; }
-        .total-price { font-size: 18px; font-weight: bold; text-align: right; margin-bottom: 15px; }
-        .checkout-btn { width: 100%; padding: 12px; background: #28a745; font-size: 18px; }
-        .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 15px; border-radius: 6px; text-align: center; }
-        .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 10px 0; }
-        .finish-btn { width: 100%; padding: 12px; background: #dc3545; font-size: 18px; margin-top: 15px; }
-        .search-box { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
-        .search-box input { padding: 8px; width: 150px; font-size: 16px; }
-        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 20px; border-radius: 6px; text-align: center; font-size: 20px; font-weight: bold; margin-top: 20px; }
+        /* 商品列表 - 手機雙欄或單欄大卡片 */
+        .menu-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .menu-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; padding: 12px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .menu-item.sold-out { background: #f9f9f9; opacity: 0.6; }
+        .item-info { flex-grow: 1; padding-right: 10px; }
+        .item-name { font-weight: bold; font-size: 17px; margin-bottom: 6px; color: #222; }
+        .item-price { color: #e63946; font-weight: bold; font-size: 16px; }
+        
+        button { padding: 8px 16px; background: #2b9348; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; }
+        button:active { transform: scale(0.96); }
+        button.sold-out-btn { background: #adb5bd; cursor: not-allowed; }
+        button.danger { background: #d90429; }
+
+        /* 購物車與偏好設定區塊 */
+        .cart-section { border-top: 3px solid #f1f3f5; padding-top: 15px; margin-top: 20px; }
+        .preferences-box { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 8px; margin-bottom: 15px; }
+        .prefs-group { margin-bottom: 10px; font-size: 15px; }
+        .prefs-group label { margin-right: 12px; font-weight: 500; cursor: pointer; display: inline-block; margin-top: 4px; }
+
+        .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 15px; }
+        .cart-table th, .cart-table td { border-bottom: 1px solid #eee; padding: 10px 6px; text-align: left; }
+        .cart-table th { background: #f8f9fa; color: #495057; }
+        
+        .total-price { font-size: 20px; font-weight: bold; text-align: right; margin-bottom: 15px; color: #d90429; }
+        .checkout-btn { width: 100%; padding: 14px; background: #2b9348; font-size: 18px; border-radius: 8px; }
+
+        /* 追蹤頁面卡片 */
+        .tracker-section { padding-top: 10px; }
+        .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 20px 15px; border-radius: 10px; text-align: center; }
+        .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 15px 0; }
+        .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
+        
+        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 20px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -52,38 +69,35 @@
 
     <!-- 查詢我的訂單區塊 -->
     <div class="search-section">
-        <h2>🔍 查詢我的訂單</h2>
+        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 已經點過餐了？輸入電話後 4 碼查詢狀態</span>
         <div class="search-box">
-            <input type="text" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
-            <button onclick="searchMyOrder()" style="background: #17a2b8;">查詢狀態</button>
+            <input type="tel" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
+            <button onclick="searchMyOrder()" style="background: #17a2b8; padding: 6px 14px;">查詢</button>
         </div>
     </div>
 
     {% if not is_open %}
-        <!-- 非營業時間提示 banner -->
         <div class="closed-banner">
             🔴 目前為非營業時間，暫停線上點餐！
         </div>
     {% else %}
         <!-- 點餐與購物車主畫面 -->
         <div id="order-view">
-            <h2>線上菜單</h2>
-            
-            <!-- 分類標籤切換 -->
+            <!-- 分類標籤 (可左右滑動) -->
             <div class="category-tabs">
-                <button class="tab-btn active" onclick="filterMenu('all', this)">全部品項</button>
+                <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
                 <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
                 <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
                 <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
                 <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
                 <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
-                <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料系列</button>
+                <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
             </div>
 
             <div class="menu-grid" id="menu-grid">
                 {% for id, item in menu.items() %}
                     <div class="menu-item {% if item.is_sold_out %}sold-out{% endif %}" data-category="{{ item.category }}">
-                        <div>
+                        <div class="item-info">
                             <div class="item-name">{{ item.name }}</div>
                             <div class="item-price">${{ item.price }}</div>
                         </div>
@@ -91,7 +105,7 @@
                             {% if item.is_sold_out %}
                                 <button class="sold-out-btn" disabled>已售罄</button>
                             {% else %}
-                                <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加入購物車</button>
+                                <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">＋ 選購</button>
                             {% endif %}
                         </div>
                     </div>
@@ -104,14 +118,14 @@
                 <!-- 口味與胡椒偏好選項 -->
                 <div class="preferences-box">
                     <div class="prefs-group">
-                        <label>🌶️ <b>辣度選擇：</b></label>
+                        <div style="font-weight: bold; margin-bottom: 4px;">🌶️ 辣度選擇：</div>
                         <label><input type="radio" name="spicy" value="不辣" checked> 不辣</label>
                         <label><input type="radio" name="spicy" value="微辣"> 微辣</label>
                         <label><input type="radio" name="spicy" value="小辣"> 小辣</label>
                         <label><input type="radio" name="spicy" value="大辣"> 大辣</label>
                     </div>
-                    <div class="prefs-group" style="margin-bottom: 0;">
-                        <label>🧂 <b>胡椒粉：</b></label>
+                    <div class="prefs-group" style="margin-bottom: 0; margin-top: 8px;">
+                        <div style="font-weight: bold; margin-bottom: 4px;">🧂 胡椒粉：</div>
                         <label><input type="radio" name="pepper" value="要" checked> 要胡椒</label>
                         <label><input type="radio" name="pepper" value="不要"> 不要胡椒</label>
                     </div>
@@ -124,41 +138,42 @@
                             <th>單價</th>
                             <th>數量</th>
                             <th>小計</th>
-                            <th>操作</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody id="cart-body">
                         <tr>
-                            <td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td>
+                            <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
                         </tr>
                     </tbody>
                 </table>
                 <div class="total-price">總金額: $<span id="total-amount">0</span></div>
-                <button class="checkout-btn" onclick="promptCheckout()">送出訂單</button>
+                <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
             </div>
         </div>
     {% endif %}
 
     <!-- 送出後的訂單明細與狀態追蹤畫面 -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
-        <h2>📋 您的訂單追蹤明細</h2>
+        <h2>📋 訂單狀態追蹤</h2>
         <div class="tracker-card">
-            <p>取餐編號（電話末四碼）：<h3 id="track-phone" style="color: #bc4749; margin: 5px 0;"></h3></p>
+            <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
+            <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
-            <div id="est-time-container" style="font-size: 16px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
+            <div id="est-time-container" style="font-size: 18px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
             
-            <p id="track-prefs" style="font-weight: bold; color: #333; margin: 5px 0;"></p>
+            <div id="track-prefs" style="font-size: 16px; font-weight: bold; color: #333; margin: 10px 0; background: #fff; padding: 8px; border-radius: 6px;"></div>
 
-            <button id="cancel-order-btn" class="danger" style="padding: 6px 12px; margin-bottom: 10px; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
+            <button id="cancel-order-btn" class="danger" style="padding: 10px 20px; font-size: 15px; margin-bottom: 10px; display: none; width: 100%; border-radius: 6px;" onclick="cancelMyOrder()">取消這筆訂單</button>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-            <div style="text-align: left;">
-                <b>訂餐內容：</b>
-                <ul id="track-items" style="padding-left: 20px; margin: 5px 0;"></ul>
-                <p><b>總金額：$<span id="track-total">0</span></b></p>
+            <div style="text-align: left; font-size: 16px;">
+                <b>餐點明細：</b>
+                <ul id="track-items" style="padding-left: 20px; margin: 8px 0;"></ul>
+                <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
             </div>
-            <!-- 取餐完成按鈕 -->
-            <button id="finish-order-btn" class="finish-btn" style="display: none;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
+            
+            <button id="finish-order-btn" class="finish-btn" style="display: none;" onclick="finishOrder()">完成取餐 (返回點餐)</button>
         </div>
     </div>
 </div>
@@ -179,7 +194,6 @@
         }
     }, { once: true });
 
-    // 菜單分類切換篩選
     function filterMenu(category, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -220,7 +234,7 @@
         let totalAmountEl = document.getElementById('total-amount');
         
         if (cart.length === 0) {
-            cartBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #777;">購物車目前是空的</td></tr>';
+            cartBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td></tr>';
             totalAmountEl.innerText = '0';
             return;
         }
@@ -233,15 +247,15 @@
             total += subtotal;
             html += `
                 <tr>
-                    <td>${item.name}</td>
+                    <td style="font-weight: 500;">${item.name}</td>
                     <td>$${item.price}</td>
                     <td>
-                        <button onclick="changeQty('${item.id}', -1)" style="padding: 2px 6px;">-</button>
-                        <span style="margin: 0 8px;">${item.quantity}</span>
-                        <button onclick="changeQty('${item.id}', 1)" style="padding: 2px 6px;">+</button>
+                        <button onclick="changeQty('${item.id}', -1)" style="padding: 2px 8px; font-size: 14px; background: #6c757d;">-</button>
+                        <span style="margin: 0 6px; font-weight: bold;">${item.quantity}</span>
+                        <button onclick="changeQty('${item.id}', 1)" style="padding: 2px 8px; font-size: 14px; background: #6c757d;">+</button>
                     </td>
-                    <td>$${subtotal}</td>
-                    <td><button onclick="changeQty('${item.id}', -${item.quantity})" style="background: #dc3545; padding: 4px 8px; font-size: 12px;">刪除</button></td>
+                    <td style="font-weight: bold; color: #e63946;">$${subtotal}</td>
+                    <td><button onclick="changeQty('${item.id}', -${item.quantity})" style="background: #d90429; padding: 4px 8px; font-size: 12px;">刪除</button></td>
                 </tr>
             `;
         });
@@ -315,7 +329,7 @@
                 
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
-                document.getElementById('track-prefs').innerText = `口味：${order.spicy} | 胡椒：${order.pepper}`;
+                document.getElementById('track-prefs').innerText = `口味偏好：🌶️ ${order.spicy} | 🧂 胡椒：${order.pepper}`;
                 
                 let itemsHtml = '';
                 order.food_list.forEach(i => {
@@ -373,17 +387,17 @@
                     if (order.status === 'pending') {
                         statusEl.innerText = '⏳ 狀態：等待店家接受訂單中...';
                         statusEl.style.color = '#b5838d';
-                        if(cancelBtn) cancelBtn.style.display = 'inline-block';
+                        if(cancelBtn) cancelBtn.style.display = 'block';
                         estTimeContainer.innerText = '';
                     } else if (order.status === 'accepted') {
-                        statusEl.innerText = '🔥 狀態：店家已接受，正在為您製作中！';
+                        statusEl.innerText = '🔥 狀態：店家已接受，正在製作中！';
                         statusEl.style.color = '#e76f51';
                         if(cancelBtn) cancelBtn.style.display = 'none';
                         if (order.est_time) {
                             estTimeContainer.innerText = `⏱️ 預估取餐時間：${order.est_time}`;
                         }
                     } else if (order.status === 'completed') {
-                        statusEl.innerText = '✅ 狀態：餐點已製作完成，請至櫃檯憑電話後四碼取餐！';
+                        statusEl.innerText = '✅ 狀態：餐點已完成，請至櫃檯憑電話後四碼取餐！';
                         statusEl.style.color = '#2a9d8f';
                         if(cancelBtn) cancelBtn.style.display = 'none';
                         estTimeContainer.innerText = '';
