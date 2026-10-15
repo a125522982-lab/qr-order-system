@@ -34,16 +34,12 @@
                         <div>
                             <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
-                            {% if order.items %}
-                                {% for i in order.items %}
-                                    {% if i is mapping %}
-                                        <span>{{ i.name }} x {{ i.quantity }}</span>{% if not loop.last %}, {% endif %}
-                                    {% else %}
-                                        <span>{{ i }}</span>{% if not loop.last %}, {% endif %}
-                                    {% endif %}
+                            {% if order.food_list %}
+                                {% for item in order.food_list %}
+                                    <span>{{ item.name }} x {{ item.quantity }}</span>{% if not loop.last %}, {% endif %}
                                 {% endfor %}
                             {% else %}
-                                <span>{{ order.items }}</span>
+                                <span>無品項資料</span>
                             {% endif %}
                         </div>
                         <div>
@@ -65,16 +61,12 @@
                 {% for order in completed_orders %}
                     <div class="completed-card">
                         <b>{{ order.table }} 號桌</b> | 總金額: ${{ order.total }} | 
-                        {% if order.items %}
-                            {% for i in order.items %}
-                                {% if i is mapping %}
-                                    {{ i.name }} x {{ i.quantity }}{% if not loop.last %}, {% endif %}
-                                {% else %}
-                                    {{ i }}{% if not loop.last %}, {% endif %}
-                                {% endif %}
+                        {% if order.food_list %}
+                            {% for item in order.food_list %}
+                                {{ item.name }} x {{ item.quantity }}{% if not loop.last %}, {% endif %}
                             {% endfor %}
                         {% else %}
-                            {{ order.items }}
+                            無品項資料
                         {% endif %}
                     </div>
                 {% endfor %}
