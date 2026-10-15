@@ -10,51 +10,56 @@ MENU_FILE = "menu.json"
 HOURS_FILE = "hours.json"
 
 default_menu = {
-    "101": {"name": "無骨雞腿排", "price": 90, "is_sold_out": False},
-    "102": {"name": "脆皮香雞排", "price": 75, "is_sold_out": False},
-    "103": {"name": "雞腿", "price": 55, "is_sold_out": False},
-    "104": {"name": "雞塊", "price": 55, "is_sold_out": False},
-    "105": {"name": "雞翅", "price": 35, "is_sold_out": False},
-    "106": {"name": "乳酪棒 (4)", "price": 50, "is_sold_out": False},
-    "107": {"name": "芋泥球 (8)", "price": 50, "is_sold_out": False},
-    "108": {"name": "起司球 (4)", "price": 50, "is_sold_out": False},
-    "109": {"name": "甜不辣", "price": 35, "is_sold_out": False},
-    "110": {"name": "百頁豆腐", "price": 30, "is_sold_out": False},
-    "111": {"name": "米血 (6)", "price": 30, "is_sold_out": False},
-    "112": {"name": "帶皮薯瓣", "price": 60, "is_sold_out": False},
-    "113": {"name": "杏鮑菇", "price": 55, "is_sold_out": False},
-    "114": {"name": "深海鱈魚條 (2)", "price": 40, "is_sold_out": False},
-    "115": {"name": "娘惹山藥捲 (4)", "price": 40, "is_sold_out": False},
-    "116": {"name": "雞軟骨", "price": 60, "is_sold_out": False},
-    "117": {"name": "魷米花", "price": 60, "is_sold_out": False},
-    "118": {"name": "嗑嗑雞丁", "price": 65, "is_sold_out": False},
-    "119": {"name": "雞皮", "price": 40, "is_sold_out": False},
-    "120": {"name": "美式脆薯", "price": 45, "is_sold_out": False},
-    "121": {"name": "薯餅 (4)", "price": 40, "is_sold_out": False},
-    "122": {"name": "花枝丸 (5)", "price": 40, "is_sold_out": False},
-    "123": {"name": "麥嗑雞塊 (5)", "price": 45, "is_sold_out": False},
-    "124": {"name": "洋蔥圈 (6)", "price": 40, "is_sold_out": False},
-    "125": {"name": "煉香花月圓", "price": 40, "is_sold_out": False},
-    "126": {"name": "煉乳銀絲卷 (4)", "price": 40, "is_sold_out": False},
-    "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "is_sold_out": False},
-    "128": {"name": "黃金地瓜條", "price": 50, "is_sold_out": False},
-    "129": {"name": "起司薯球 (6)", "price": 50, "is_sold_out": False},
-    "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "is_sold_out": False},
-    "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "is_sold_out": False},
-    "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "is_sold_out": False},
-    "204": {"name": "4號餐 (雞腿+雞塊+雞翅+飲料)", "price": 155, "is_sold_out": False},
-    "205": {"name": "5號餐 (雞排+美式脆薯+飲料)", "price": 125, "is_sold_out": False},
-    "206": {"name": "全家桶", "price": 339, "is_sold_out": False},
-    "207": {"name": "超值全家桶", "price": 449, "is_sold_out": False},
-    "208": {"name": "炸全雞", "price": 429, "is_sold_out": False},
-    "209": {"name": "全雞餐", "price": 579, "is_sold_out": False},
-    "210": {"name": "雞翅滿足桶", "price": 399, "is_sold_out": False},
-    "211": {"name": "雞塊滿足桶", "price": 399, "is_sold_out": False},
-    "212": {"name": "雞腿滿足桶", "price": 399, "is_sold_out": False},
+    # 1. 單點炸物 (101-129)
+    "101": {"name": "無骨雞腿排", "price": 90, "category": "fried", "is_sold_out": False},
+    "102": {"name": "脆皮香雞排", "price": 75, "category": "fried", "is_sold_out": False},
+    "103": {"name": "雞腿", "price": 55, "category": "fried", "is_sold_out": False},
+    "104": {"name": "雞塊", "price": 55, "category": "fried", "is_sold_out": False},
+    "105": {"name": "雞翅", "price": 35, "category": "fried", "is_sold_out": False},
+    "106": {"name": "乳酪棒 (4)", "price": 50, "category": "fried", "is_sold_out": False},
+    "107": {"name": "芋泥球 (8)", "price": 50, "category": "fried", "is_sold_out": False},
+    "108": {"name": "起司球 (4)", "price": 50, "category": "fried", "is_sold_out": False},
+    "109": {"name": "甜不辣", "price": 35, "category": "fried", "is_sold_out": False},
+    "110": {"name": "百頁豆腐", "price": 30, "category": "fried", "is_sold_out": False},
+    "111": {"name": "米血 (6)", "price": 30, "category": "fried", "is_sold_out": False},
+    "112": {"name": "帶皮薯瓣", "price": 60, "category": "fried", "is_sold_out": False},
+    "113": {"name": "杏鮑菇", "price": 55, "category": "fried", "is_sold_out": False},
+    "114": {"name": "深海鱈魚條 (2)", "price": 40, "category": "fried", "is_sold_out": False},
+    "115": {"name": "娘惹山藥捲 (4)", "price": 40, "category": "fried", "is_sold_out": False},
+    "116": {"name": "雞軟骨", "price": 60, "category": "fried", "is_sold_out": False},
+    "117": {"name": "魷米花", "price": 60, "category": "fried", "is_sold_out": False},
+    "118": {"name": "嗑嗑雞丁", "price": 65, "category": "fried", "is_sold_out": False},
+    "119": {"name": "雞皮", "price": 40, "category": "fried", "is_sold_out": False},
+    "120": {"name": "美式脆薯", "price": 45, "category": "fried", "is_sold_out": False},
+    "121": {"name": "薯餅 (4)", "price": 40, "category": "fried", "is_sold_out": False},
+    "122": {"name": "花枝丸 (5)", "price": 40, "category": "fried", "is_sold_out": False},
+    "123": {"name": "麥嗑雞塊 (5)", "price": 45, "category": "fried", "is_sold_out": False},
+    "124": {"name": "洋蔥圈 (6)", "price": 40, "category": "fried", "is_sold_out": False},
+    "125": {"name": "煉香花月圓", "price": 40, "category": "fried", "is_sold_out": False},
+    "126": {"name": "煉乳銀絲卷 (4)", "price": 40, "category": "fried", "is_sold_out": False},
+    "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "category": "fried", "is_sold_out": False},
+    "128": {"name": "黃金地瓜條", "price": 50, "category": "fried", "is_sold_out": False},
+    "129": {"name": "起司薯球 (6)", "price": 50, "category": "fried", "is_sold_out": False},
+    
+    # 2. 超值套餐 (201-205)
+    "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "category": "combo", "is_sold_out": False},
+    "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "category": "combo", "is_sold_out": False},
+    "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "category": "combo", "is_sold_out": False},
+    "204": {"name": "4號餐 (雞腿+雞塊+雞翅+飲料)", "price": 155, "category": "combo", "is_sold_out": False},
+    "205": {"name": "5號餐 (雞排+美式脆薯+飲料)", "price": 125, "category": "combo", "is_sold_out": False},
+    
+    # 3. 人氣滿足桶 (206-212)
+    "206": {"name": "全家桶", "price": 339, "category": "bucket", "is_sold_out": False},
+    "207": {"name": "超值全家桶", "price": 449, "category": "bucket", "is_sold_out": False},
+    "208": {"name": "炸全雞", "price": 429, "category": "bucket", "is_sold_out": False},
+    "209": {"name": "全雞餐", "price": 579, "category": "bucket", "is_sold_out": False},
+    "210": {"name": "雞翅滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
+    "211": {"name": "雞塊滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
+    "212": {"name": "雞腿滿足桶", "price": 399, "category": "bucket", "is_sold_out": False},
 }
 
 default_hours = {
-    "force_close": False,  # 預設不強制關閉（正常營業）
+    "force_close": False,
     "Mon": {"open": "11:00", "close": "22:00", "enabled": True},
     "Tue": {"open": "11:00", "close": "22:00", "enabled": True},
     "Wed": {"open": "11:00", "close": "22:00", "enabled": True},
@@ -81,6 +86,8 @@ def load_menu():
                 for item_id, item_info in data.items():
                     if "is_sold_out" not in item_info:
                         item_info["is_sold_out"] = False
+                    if "category" not in item_info:
+                        item_info["category"] = "fried"
                 return data
     except Exception:
         pass
@@ -174,7 +181,9 @@ def admin_page():
                         "food_list": fl,
                         "total": int(o.get("total", 0)),
                         "status": status,
-                        "est_time": str(o.get("est_time", ""))
+                        "est_time": str(o.get("est_time", "")),
+                        "spicy": str(o.get("spicy", "不辣")),
+                        "pepper": str(o.get("pepper", "要"))
                     })
         return cleaned
 
@@ -300,7 +309,9 @@ def place_order():
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
             "status": "pending",
-            "est_time": ""
+            "est_time": "",
+            "spicy": str(data.get("spicy", "不辣")),
+            "pepper": str(data.get("pepper", "要"))
         }
 
         ORDERS.append(new_order)
