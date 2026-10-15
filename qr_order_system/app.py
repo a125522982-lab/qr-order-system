@@ -64,7 +64,6 @@ def load_menu():
         with open(MENU_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
             if data and isinstance(data, dict):
-                # 確保每個品項都有 is_sold_out 欄位
                 for item_id, item_info in data.items():
                     if "is_sold_out" not in item_info:
                         item_info["is_sold_out"] = False
@@ -108,6 +107,7 @@ def admin_page():
                     cleaned.append({
                         "id": str(o.get("id", time.time())),
                         "table": str(o.get("table", "1")),
+                        "phone_last4": str(o.get("phone_last4", "----")),
                         "food_list": fl,
                         "total": int(o.get("total", 0))
                     })
@@ -137,7 +137,6 @@ def handle_menu():
     return jsonify(load_menu())
 
 
-# 切換售罄狀態的 API
 @app.route("/api/menu/toggle_soldout", methods=["POST"])
 def toggle_soldout():
     try:
@@ -181,6 +180,7 @@ def place_order():
         new_order = {
             "id": str(int(time.time() * 1000)),
             "table": str(data.get("table", "1")),
+            "phone_last4": str(data.get("phone_last4", "0000")),
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
         }
