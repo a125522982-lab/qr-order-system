@@ -10,7 +10,6 @@ MENU_FILE = "menu.json"
 HOURS_FILE = "hours.json"
 
 default_menu = {
-    # 1. 單點炸物 (101-129)
     "101": {"name": "無骨雞腿排", "price": 90, "category": "fried", "is_sold_out": False},
     "102": {"name": "脆皮香雞排", "price": 75, "category": "fried", "is_sold_out": False},
     "103": {"name": "雞腿", "price": 55, "category": "fried", "is_sold_out": False},
@@ -40,15 +39,11 @@ default_menu = {
     "127": {"name": "椒鹽銀絲卷 (4)", "price": 30, "category": "fried", "is_sold_out": False},
     "128": {"name": "黃金地瓜條", "price": 50, "category": "fried", "is_sold_out": False},
     "129": {"name": "起司薯球 (6)", "price": 50, "category": "fried", "is_sold_out": False},
-    
-    # 2. 超值套餐 (201-205)
     "201": {"name": "1號餐 (雞翅+雞塊+飲料)", "price": 100, "category": "combo", "is_sold_out": False},
     "202": {"name": "2號餐 (雞塊+雞腿+飲料)", "price": 120, "category": "combo", "is_sold_out": False},
     "203": {"name": "3號餐 (美式脆薯+嗑嗑雞丁+麥嗑雞塊+飲料)", "price": 140, "category": "combo", "is_sold_out": False},
     "204": {"name": "4號餐 (雞腿+雞塊+雞翅+飲料)", "price": 155, "category": "combo", "is_sold_out": False},
     "205": {"name": "5號餐 (雞排+美式脆薯+飲料)", "price": 125, "category": "combo", "is_sold_out": False},
-    
-    # 3. 人氣滿足桶 (206-212)
     "206": {"name": "全家桶", "price": 339, "category": "bucket", "is_sold_out": False},
     "207": {"name": "超值全家桶", "price": 449, "category": "bucket", "is_sold_out": False},
     "208": {"name": "炸全雞", "price": 429, "category": "bucket", "is_sold_out": False},
@@ -218,7 +213,8 @@ def update_hours():
     try:
         data = request.get_json(silent=True)
         if data and isinstance(data, dict):
-            data["force_close"] = bool(data.get("force_close", False))
+            # 明確確保從前端接收到的 force_close 轉為正確的布林值儲存
+            data["force_close"] = True if data.get("force_close") == True or data.get("force_close") == "true" else False
             save_hours(data)
             return jsonify({"success": True})
         return jsonify({"success": False, "message": "無效資料"}), 400
@@ -376,32 +372,4 @@ def cancel_order():
     try:
         data = request.get_json(silent=True)
         if not data or "order_id" not in data:
-            return jsonify({"success": False, "message": "無效的訂單編號"}), 400
-
-        target_id = str(data["order_id"])
-        found_order = None
-        
-        for i, order in enumerate(ORDERS):
-            if str(order.get("id")) == target_id:
-                found_order = ORDERS.pop(i)
-                found_order["status"] = "cancelled"
-                break
-                
-        if not found_order:
-            for i, order in enumerate(ACCEPTED_ORDERS):
-                if str(order.get("id")) == target_id:
-                    found_order = ACCEPTED_ORDERS.pop(i)
-                    found_order["status"] = "cancelled"
-                    break
-
-        if found_order:
-            CANCELLED_ORDERS.append(found_order)
-            return jsonify({"success": True})
-
-        return jsonify({"success": False, "message": "找不到該筆訂單或已無法取消"}), 404
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+            return jsonify({"success": False, "message": "無效的訂單編號"}), 4
