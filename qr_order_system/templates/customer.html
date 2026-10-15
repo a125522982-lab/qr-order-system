@@ -38,7 +38,7 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 查詢我的訂單區塊 (即便非營業時間也可查詢現有訂單) -->
+    <!-- 查詢我的訂單區塊 -->
     <div class="search-section">
         <h2>🔍 查詢我的訂單</h2>
         <div class="search-box">
@@ -50,7 +50,7 @@
     {% if not is_open %}
         <!-- 非營業時間提示 banner -->
         <div class="closed-banner">
-            🔴 目前為非營業時間（今日營業時段：{{ hours.open }} - {{ hours.close }}），暫停線上點餐！
+            🔴 目前為非營業時間（時段：{{ hours.open }} - {{ hours.close }}），暫停線上點餐！
         </div>
     {% else %}
         <!-- 點餐與購物車主畫面 -->
