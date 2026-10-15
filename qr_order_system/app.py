@@ -1,11 +1,13 @@
 import json
 import os
 import time
+from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
 
 MENU_FILE = "menu.json"
+HOURS_FILE = "hours.json"
 
 default_menu = {
     "101": {"name": "無骨雞腿排", "price": 90, "is_sold_out": False},
@@ -51,6 +53,17 @@ default_menu = {
     "212": {"name": "雞腿滿足桶", "price": 399, "is_sold_out": False},
 }
 
+# 預設每週營業時間 (預設 11:00 至 22:00)
+default_hours = {
+    "Mon": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Tue": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Wed": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Thu": {"open": "11:00", "close": "22:00", "enabled": True},
+    "Fri": {"open": "11:00", "close": "23:00", "enabled": True},
+    "Sat": {"open": "11:00", "close": "23:00", "enabled": True},
+    "Sun": {"open": "11:00", "close": "22:00", "enabled": True},
+}
+
 ORDERS = []
 ACCEPTED_ORDERS = []
 COMPLETED_ORDERS = []
@@ -79,6 +92,25 @@ def save_menu(menu_data):
         json.dump(menu_data, f, ensure_ascii=False, indent=4)
 
 
+def load_hours():
+    if not os.path.exists(HOURS_FILE):
+        with open(HOURS_FILE, "w", encoding="utf-8") as f:
+            json.dump(default_hours, f, ensure_ascii=False, indent=4)
+    try:
+        with open(HOURS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if data and isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return default_hours
+
+
+def save_hours(hours_data):
+    with open(HOURS_FILE, "w", encoding="utf-8") as f:
+        json.dump(hours_data, f, ensure_ascii=False, indent=4)
+
+
 @app.route("/")
 def index():
     return (
@@ -91,13 +123,33 @@ def index():
 @app.route("/menu")
 def customer_menu():
     table = request.args.get("table", "1")
-    return render_template("customer.html", table=table, menu=load_menu())
+    hours = load_hours()
+    
+    # 檢查當前時間是否在營業時間內
+    now = datetime.now()
+    day_map = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}
+    today_key = day_map[now.weekday()]
+    
+    today_setting = hours.get(today_key, {"enabled": True, "open": "00:00", "close": "24:00"})
+    
+    is_open = True
+    if not today_setting.get("enabled", True):
+        is_open = False
+    else:
+        current_time_str = now.strftime("%H:%M")
+        open_time = today_setting.get("open", "00:00")
+        close_time = today_setting.get("close", "24:00")
+        if not (open_time <= current_time_str <= close_time):
+            is_open = False
+
+    return render_template("customer.html", table=table, menu=load_menu(), is_open=is_open, hours=today_setting)
 
 
 @app.route("/admin")
 def admin_page():
     global ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS
     current_menu = load_menu()
+    current_hours = load_hours()
     
     def clean_list(lst, status):
         cleaned = []
@@ -124,7 +176,6 @@ def admin_page():
     COMPLETED_ORDERS = clean_list(COMPLETED_ORDERS, "completed")
     CANCELLED_ORDERS = clean_list(CANCELLED_ORDERS, "cancelled")
 
-    # 計算今日營收與品項統計
     total_revenue = sum(o["total"] for o in COMPLETED_ORDERS)
     item_stats = {}
     for o in COMPLETED_ORDERS:
@@ -136,6 +187,7 @@ def admin_page():
     return render_template(
         "admin.html",
         menu=current_menu,
+        hours=current_hours,
         orders=ORDERS,
         accepted_orders=ACCEPTED_ORDERS,
         completed_orders=COMPLETED_ORDERS,
@@ -145,7 +197,19 @@ def admin_page():
     )
 
 
-# 客戶端查詢指定訂單狀態的 API (供追蹤與自行搜尋使用)
+# 儲存營業時間設定 API
+@app.route("/api/hours/save", methods=["POST"])
+def update_hours():
+    try:
+        data = request.get_json(silent=True)
+        if data:
+            save_hours(data)
+            return jsonify({"success": True})
+        return jsonify({"success": False, "message": "無效資料"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+
 @app.route("/api/order/status", methods=["GET"])
 def check_order_status():
     order_id = request.args.get("order_id")
@@ -159,7 +223,6 @@ def check_order_status():
                 return jsonify({"success": True, "order": o})
                 
     if phone_last4:
-        # 反向搜尋該電話後四碼最近的一筆未完成/製作中訂單
         for o in reversed(all_orders):
             if str(o.get("phone_last4")) == str(phone_last4) and o.get("status") in ["pending", "accepted", "completed"]:
                 return jsonify({"success": True, "order": o})
@@ -239,7 +302,6 @@ def place_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 接受訂單並設定預估取餐時間
 @app.route("/api/order/accept", methods=["POST"])
 def accept_order():
     try:
@@ -267,7 +329,6 @@ def accept_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 完成訂單
 @app.route("/api/order/complete", methods=["POST"])
 def complete_order():
     try:
@@ -292,7 +353,6 @@ def complete_order():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# 取消訂單 (客戶端或後台皆可呼叫)
 @app.route("/api/order/cancel", methods=["POST"])
 def cancel_order():
     try:
@@ -303,14 +363,12 @@ def cancel_order():
         target_id = str(data["order_id"])
         found_order = None
         
-        # 只能從 pending (待處理) 中取消，若已接受則需由後台處理或限制
         for i, order in enumerate(ORDERS):
             if str(order.get("id")) == target_id:
                 found_order = ORDERS.pop(i)
                 found_order["status"] = "cancelled"
                 break
                 
-        # 允許後台從已接受中取消
         if not found_order:
             for i, order in enumerate(ACCEPTED_ORDERS):
                 if str(order.get("id")) == target_id:
