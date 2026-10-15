@@ -16,7 +16,8 @@
         button { padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { opacity: 0.9; }
         button.sold-out-btn { background: #6c757d; cursor: not-allowed; }
-        .cart-section, .tracker-section { border-top: 2px solid #eee; padding-top: 20px; margin-top: 20px; }
+        button.danger { background: #dc3545; }
+        .cart-section, .tracker-section, .search-section { border-top: 2px solid #eee; padding-top: 20px; margin-top: 20px; }
         .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
         .cart-table th, .cart-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         .cart-table th { background: #f2f2f2; }
@@ -25,6 +26,8 @@
         .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 15px; border-radius: 6px; text-align: center; }
         .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 10px 0; }
         .finish-btn { width: 100%; padding: 12px; background: #dc3545; font-size: 18px; margin-top: 15px; }
+        .search-box { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+        .search-box input { padding: 8px; width: 150px; font-size: 16px; }
     </style>
 </head>
 <body>
@@ -32,6 +35,15 @@
     <h1>🍗 酷嗑斯美式炸雞</h1>
     <div style="text-align: center;">
         <span class="table-badge">桌號：{{ table }} 號桌</span>
+    </div>
+
+    <!-- 查詢我的訂單區塊 (讓客人隨時可透過電話末四碼找回訂單) -->
+    <div class="search-section">
+        <h2>🔍 查詢我的訂單</h2>
+        <div class="search-box">
+            <input type="text" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
+            <button onclick="searchMyOrder()" style="background: #17a2b8;">查詢狀態</button>
+        </div>
     </div>
 
     <!-- 點餐與購物車主畫面 -->
@@ -84,6 +96,11 @@
         <div class="tracker-card">
             <p>取餐編號（電話末四碼）：<h3 id="track-phone" style="color: #bc4749; margin: 5px 0;"></h3></p>
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
+            <div id="est-time-container" style="font-size: 16px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
+            
+            <!-- 等待接受期間允許客人取消訂單 -->
+            <button id="cancel-order-btn" class="danger" style="padding: 6px 12px; margin-bottom: 10px; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
+
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
             <div style="text-align: left;">
                 <b>訂餐內容：</b>
@@ -96,7 +113,6 @@
     </div>
 </div>
 
-<!-- 客戶端專屬提示音檔 (static/customer_alert.mp3)，設定 loop 循環播放 -->
 <audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
@@ -107,7 +123,6 @@
     let isCompletedAlertTriggered = false;
     const alertAudio = document.getElementById('customer-alert-sound');
 
-    // 頁面任意點擊即可解鎖音訊播放限制
     document.addEventListener('click', () => {
         if (alertAudio.paused) {
             alertAudio.load();
@@ -207,30 +222,64 @@
         .then(data => {
             if (data.success) {
                 currentOrderId = data.order_id;
-                isCompletedAlertTriggered = false;
+                loadTrackerView(data.order_id);
+            } else {
+                alert('送出失敗：' + data.message);
+            }
+        });
+    }
+
+    // 透過訂單 ID 載入追蹤畫面
+    async function loadTrackerView(orderId) {
+        currentOrderId = orderId;
+        isCompletedAlertTriggered = false;
+        
+        try {
+            let res = await fetch(`/api/order/status?order_id=${orderId}`);
+            let data = await res.json();
+            
+            if (data.success) {
+                let order = data.order;
                 
                 document.getElementById('order-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
-                document.getElementById('finish-order-btn').style.display = 'none';
                 
-                document.getElementById('track-phone').innerText = phone.slice(-4);
-                document.getElementById('track-total').innerText = total;
+                document.getElementById('track-phone').innerText = order.phone_last4;
+                document.getElementById('track-total').innerText = order.total;
                 
                 let itemsHtml = '';
-                cart.forEach(i => {
+                order.food_list.forEach(i => {
                     itemsHtml += `<li>${i.name} x ${i.quantity} ($${i.price * i.quantity})</li>`;
                 });
                 document.getElementById('track-items').innerHTML = itemsHtml;
 
                 startStatusPolling();
-            } else {
-                alert('送出失敗：' + data.message);
             }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('網路連線發生錯誤，請稍後再試');
-        });
+        } catch (e) {
+            alert('找不到該訂單');
+        }
+    }
+
+    // 客戶端自行輸入末四碼查詢訂單
+    async function searchMyOrder() {
+        let phone4 = document.getElementById('search-phone4').value.trim();
+        if (phone4.length !== 4 || isNaN(phone4)) {
+            alert('請輸入正確的電話後 4 碼！');
+            return;
+        }
+
+        try {
+            let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
+            let data = await res.json();
+            
+            if (data.success) {
+                loadTrackerView(data.order.id);
+            } else {
+                alert('找不到該末四碼對應的進行中訂單');
+            }
+        } catch (e) {
+            alert('查詢發生錯誤');
+        }
     }
 
     function startStatusPolling() {
@@ -245,49 +294,73 @@
                 if (data.success) {
                     let order = data.order;
                     let statusEl = document.getElementById('track-status');
+                    let estTimeContainer = document.getElementById('est-time-container');
+                    let cancelBtn = document.getElementById('cancel-order-btn');
                     
                     if (order.status === 'pending') {
                         statusEl.innerText = '⏳ 狀態：等待店家接受訂單中...';
                         statusEl.style.color = '#b5838d';
+                        cancelBtn.style.display = 'inline-block'; // 待處理時允許取消
+                        estTimeContainer.innerText = '';
                     } else if (order.status === 'accepted') {
                         statusEl.innerText = '🔥 狀態：店家已接受，正在為您製作中！';
                         statusEl.style.color = '#e76f51';
+                        cancelBtn.style.display = 'none'; // 已接受後不可隨便取消
+                        if (order.est_time) {
+                            estTimeContainer.innerText = `⏱️ 預估取餐時間：${order.est_time}`;
+                        }
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已製作完成，請至櫃檯憑電話後四碼取餐！';
                         statusEl.style.color = '#2a9d8f';
+                        cancelBtn.style.display = 'none';
+                        estTimeContainer.innerText = '';
                         
                         document.getElementById('finish-order-btn').style.display = 'block';
 
-                        // 當餐點完成時，播放客戶端專屬提示音
                         if (!isCompletedAlertTriggered) {
                             isCompletedAlertTriggered = true;
-                            alertAudio.play().catch(err => {
-                                console.log("音效自動撥放受限", err);
-                            });
+                            alertAudio.play().catch(err => {});
                         }
+                    } else if (order.status === 'cancelled') {
+                        alert('❌ 您的訂單已被取消');
+                        finishOrder();
                     }
                 }
-            } catch (e) {
-                console.log("狀態同步中...", e);
-            }
+            } catch (e) {}
         }, 3000);
     }
 
-    // 點擊「取餐完成」按鈕後，關閉提示音並返回點餐主畫面
+    // 客戶主動取消訂單
+    function cancelMyOrder() {
+        if (!confirm('確定要取消這筆訂單嗎？')) return;
+        
+        fetch('/api/order/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: currentOrderId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('訂單已成功取消');
+                finishOrder();
+            } else {
+                alert('取消失敗：' + data.message);
+            }
+        });
+    }
+
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         
-        // 停止並重置音檔
         alertAudio.pause();
         alertAudio.currentTime = 0;
 
-        // 清空購物車與狀態
         cart = [];
         updateCartUI();
         currentOrderId = null;
         isCompletedAlertTriggered = false;
 
-        // 切回點餐頁面
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
     }
