@@ -5,42 +5,66 @@
     <title>店家後台管理 - 酷嗑斯美式炸雞</title>
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .section { margin-bottom: 30px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background: #f2f2f2; }
-        button { padding: 6px 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button { padding: 6px 14px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button.accept { background: #ffc107; color: #333; }
         button.success { background: #28a745; }
-        button.danger { background: #dc3545; }
         button:hover { opacity: 0.9; }
-        .form-group { margin-bottom: 10px; }
-        input { padding: 6px; width: 200px; margin-right: 10px; }
-        .order-card { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; animation: highlight 1s; }
+        .order-card { background: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .accepted-card { background: #d1ecf1; border: 1px solid #bee5eb; padding: 12px; border-radius: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; color: #0c5460; }
         .completed-card { background: #e2e3e5; border: 1px solid #d6d8db; padding: 10px; border-radius: 6px; margin-bottom: 8px; color: #383d41; }
         .status-bar { background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        @keyframes highlight {
-            0% { background-color: #ffc107; }
-            100% { background-color: #fff3cd; }
-        }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="status-bar">
-        <span>🟢 <b>即時連線中</b>：後台將每 3 秒自動檢查新訂單並播放提示音</span>
-        <button onclick="enableSound()" style="background: #17a2b8; font-size: 12px;">點此啟用聲音提示</button>
+        <span>🟢 <b>即時連線中</b>：未接受訂單將持續提醒響鈴</span>
+        <button onclick="enableSound()" style="background: #17a2b8; font-size: 12px;">點此啟用提示音</button>
     </div>
 
-    <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台</h1>
+    <h1>👨‍🍳 酷嗑斯美式炸雞 - 店家後台管理</h1>
     
-    <!-- 即時訂單區塊 -->
+    <!-- 1. 即時進來的訂單 -->
     <div class="section">
-        <h2>📦 即時進來的訂單</h2>
+        <h2>📦 1. 即時進來的訂單 (待處理)</h2>
         <div id="orders-list">
             {% if orders %}
                 {% for order in orders %}
                     <div class="order-card" id="order-{{ order.id }}">
+                        <div>
+                            <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
+                            內容：
+                            {% if order.food_list is iterable and order.food_list is not string %}
+                                {% for item in order.food_list %}
+                                    <span>{{ item.name }} x {{ item.quantity }}</span>{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span>無品項資料</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <button class="accept" onclick="acceptOrder('{{ order.id }}')">接受訂單</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #777;" id="no-pending">目前沒有新進訂單</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 2. 已經接受的訂單 -->
+    <div class="section">
+        <h2>🔥 2. 已經接受的訂單 (製作中)</h2>
+        <div id="accepted-list">
+            {% if accepted_orders %}
+                {% for order in accepted_orders %}
+                    <div class="accepted-card">
                         <div>
                             <b>{{ order.table }} 號桌</b> - 總金額: <b>${{ order.total }}</b><br>
                             內容：
@@ -58,14 +82,14 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <p id="no-order-text" style="color: #777;">目前沒有進行中的訂單</p>
+                <p style="color: #777;">目前沒有製作中的訂單</p>
             {% endif %}
         </div>
     </div>
 
-    <!-- 已完成訂單區塊 -->
+    <!-- 3. 已完成歷史訂單 -->
     <div class="section">
-        <h2>✅ 已完成的歷史訂單</h2>
+        <h2>✅ 3. 已完成歷史訂單</h2>
         <div id="completed-list">
             {% if completed_orders %}
                 {% for order in completed_orders %}
@@ -88,7 +112,7 @@
 
     <hr>
 
-    <!-- 菜單管理區塊 -->
+    <!-- 菜單一覽 -->
     <div class="section">
         <h2>📋 現有菜單一覽</h2>
         <table>
@@ -113,70 +137,99 @@
 </div>
 
 <script>
-    // 播放提示音效的函式 (使用瀏覽器內建的 Web Audio API 產生「嗶嗶」聲，不需要額外音檔)
-    function playAlertSound() {
-        try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // 頻率 (高音)
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.3); // 響 0.3 秒
-        } catch (e) {
-            console.log("音效播放受阻:", e);
-        }
-    }
-
-    // 瀏覽器通常需要使用者點擊一次畫面才能解鎖聲音
     let soundEnabled = false;
     function enableSound() {
         soundEnabled = true;
-        playAlertSound();
-        alert('音效提示已啟用！當有新訂單時將會自動發出提示音。');
+        playDingDong();
+        alert('提示音已啟用！');
     }
 
-    // 記錄上一次看到的訂單數量，用來判斷是否有「新」訂單進來
-    let lastOrderCount = {{ orders|length }};
+    // 播放好聽的雙音階「叮咚」提示音 (高音起伏，溫和悅耳)
+    function playDingDong() {
+        if (!soundEnabled) return;
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 第一聲 (叮)
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+            gain1.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start();
+            osc1.stop(audioCtx.currentTime + 0.4);
 
-    // 每 3 秒自動向後台檢查一次最新狀態
+            // 第二聲 (咚) - 0.2秒後
+            setTimeout(() => {
+                const osc2 = audioCtx.createOscillator();
+                const gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+                gain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 0.5);
+            }, 200);
+
+        } catch (e) {
+            console.log("音效播放失敗", e);
+        }
+    }
+
+    let lastPendingCount = {{ orders|length }};
+
+    // 每 3 秒自動輪詢更新後台狀態
     setInterval(async () => {
         try {
             let res = await fetch('/admin');
             let text = await res.text();
             
-            // 解析回傳的 HTML 內容
             let parser = new DOMParser();
             let doc = parser.parseFromString(text, 'text/html');
             
-            // 抓取伺服器目前的即時訂單列表容器
-            let newOrdersHtml = doc.getElementById('orders-list').innerHTML;
-            let currentOrdersCount = doc.querySelectorAll('#orders-list .order-card').length;
+            let currentPendingCount = doc.querySelectorAll('#orders-list .order-card').length;
 
-            // 如果發現訂單數量增加，代表有新訂單！
-            if (currentOrdersCount > lastOrderCount) {
-                playAlertSound();
-                // 直接更新畫面上的即時訂單區塊與已完成區塊
-                document.getElementById('orders-list').innerHTML = newOrdersHtml;
-                document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
-                lastOrderCount = currentOrdersCount;
-            } else if (currentOrdersCount < lastOrderCount) {
-                // 如果訂單被完成了或減少了，也同步更新
-                document.getElementById('orders-list').innerHTML = newOrdersHtml;
-                document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
-                lastOrderCount = currentOrdersCount;
+            // 如果待處理訂單數量增加，或者只要「有待處理訂單且尚未被清空」，就會持續響鈴提醒！
+            if (currentPendingCount > 0) {
+                if (currentPendingCount > lastPendingCount || soundEnabled) {
+                    playDingDong();
+                }
             }
-        } catch (err) {
-            console.log("自動同步背景檢查中...", err);
-        }
-    }, 3000); // 3000 毫秒 = 3 秒
+            lastPendingCount = currentPendingCount;
 
+            // 即時替換三個區塊的 HTML 內容，保持畫面同步
+            document.getElementById('orders-list').innerHTML = doc.getElementById('orders-list').innerHTML;
+            document.getElementById('accepted-list').innerHTML = doc.getElementById('accepted-list').innerHTML;
+            document.getElementById('completed-list').innerHTML = doc.getElementById('completed-list').innerHTML;
+
+        } catch (err) {
+            console.log("背景同步中...", err);
+        }
+    }, 3000);
+
+    // 點擊「接受訂單」
+    function acceptOrder(orderId) {
+        fetch('/api/order/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('操作失敗：' + data.message);
+            }
+        });
+    }
+
+    // 點擊「完成訂單」
     function completeOrder(orderId) {
         fetch('/api/order/complete', {
             method: 'POST',
@@ -190,10 +243,6 @@
             } else {
                 alert('操作失敗：' + data.message);
             }
-        })
-        .catch(err => {
-            console.error(err);
-            alert('發生網路錯誤');
         });
     }
 </script>
