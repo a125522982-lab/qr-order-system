@@ -248,25 +248,26 @@
 </div>
 
 <!-- 新訂單音效提醒 -->
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
+<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
     let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 點擊頁面解鎖音效權限
+    // 頁面載入後，只要使用者在頁面上點擊任何地方，就自動解鎖音效權限
     document.addEventListener('click', () => {
-        if (adminAlertAudio.paused) { adminAlertAudio.load(); }
+        if (adminAlertAudio.paused) {
+            adminAlertAudio.load();
+        }
     }, { once: true });
 
-    // 自動輪詢：每 3 秒檢查一次是否有新訂單，有新訂單自動播放音效並重新整理
+    // 自動輪詢：每 3 秒檢查一次新訂單，有新訂單自動播放提示音並重新整理
     setInterval(async () => {
-        if (document.activeElement.tagName === "INPUT") return; // 正在輸入時不重新整理
+        if (document.activeElement.tagName === "INPUT") return;
         try {
             let res = await fetch('/api/admin/check_orders');
             let data = await res.json();
             if (data.pending_count > lastPendingCount) {
-                // 有新待處理訂單！播放音效並重新整理
                 adminAlertAudio.play().catch(err => {});
                 setTimeout(() => {
                     location.reload();
