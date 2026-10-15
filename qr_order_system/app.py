@@ -72,19 +72,12 @@ def update_menu_api():
 
 
 # 5. 接收客人口腹訂單的 API
-@app.route("/api/order", methods=["POST"], endpoint="place_order_api")
+@app.route("/api/order", methods=["POST"])
 def place_order():
     try:
-        # 印出前端傳過來的 Content-Type 看看是不是 application/json
-        print("Content-Type:", request.content_type)
-        
-        # 取得原始資料
-        raw_data = request.get_data(as_text=True)
-        print("收到前端原始資料:", raw_data)
-
         data = request.get_json(silent=True)
         if not data:
-            return jsonify({"success": False, "message": "無效的 JSON 格式"}), 400
+            return jsonify({"success": False, "message": "無效的請求資料"}), 400
 
         table = data.get("table", "未知桌號")
         items = data.get("items", [])
@@ -92,15 +85,11 @@ def place_order():
 
         new_order = {"table": table, "items": items, "total": total}
         ORDERS.append(new_order)
-        print(f"成功存入訂單：{new_order}")
+        print(f"收到來自 {table} 號桌的新訂單：", new_order)
 
         return jsonify({"success": True, "message": "訂單送出成功！"})
     except Exception as e:
-        import traceback
-        error_detail = traceback.format_exc()
-        print("=== 發生嚴重錯誤 ===")
-        print(error_detail)
+        print(f"處理訂單發生錯誤: {str(e)}")
         return jsonify({"success": False, "message": f"伺服器內部錯誤: {str(e)}"}), 500
-
 if __name__ == "__main__":
     app.run(debug=True)
