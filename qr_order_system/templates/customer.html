@@ -42,10 +42,8 @@
 </div>
 
 <script>
-    // 購物車陣列
     let cart = [];
 
-    // 加入購物車
     function addToCart(name, price) {
         let found = cart.find(item => item.name === name);
         if (found) {
@@ -56,7 +54,6 @@
         updateCartUI();
     }
 
-    // 變更數量（加減）
     function changeQuantity(name, delta) {
         let found = cart.find(item => item.name === name);
         if (found) {
@@ -69,13 +66,11 @@
         }
     }
 
-    // 從購物車刪除品項
     function removeFromCart(name) {
         cart = cart.filter(item => item.name !== name);
         updateCartUI();
     }
 
-    // 更新購物車畫面與總金額
     function updateCartUI() {
         const container = document.getElementById('cart-items');
         const totalSpan = document.getElementById('cart-total');
@@ -108,7 +103,6 @@
         totalSpan.innerText = total;
     }
 
-    // 總確認並送出訂單
     function submitOrder() {
         if (cart.length === 0) {
             alert('購物車是空的，請先選擇餐點！');
@@ -127,7 +121,7 @@
         .then(data => {
             if (data.success) {
                 alert('🎉 訂單已成功送出！店家正在為您準備。');
-                cart = []; // 清空購物車
+                cart = [];
                 updateCartUI();
             } else {
                 alert('送出失敗：' + data.message);
