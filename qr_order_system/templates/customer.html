@@ -37,7 +37,8 @@
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
         .modal-title { font-size: 20px; font-weight: bold; }
         .modal-price { color: #e63946; font-size: 18px; font-weight: bold; }
-        .modal-option-title { font-weight: bold; font-size: 15px; margin-top: 12px; margin-bottom: 8px; color: #495057; }
+        .modal-option-title { font-weight: bold; font-size: 15px; margin-top: 12px; margin-bottom: 4px; color: #495057; display: flex; justify-content: space-between; align-items: center; }
+        .limit-hint { font-size: 13px; color: #e63946; font-weight: normal; }
         .options-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
         .option-btn { padding: 8px 14px; border: 1px solid #ced4da; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; font-weight: 500; }
         .option-btn.selected { background: #e63946; color: white; border-color: #e63946; }
@@ -47,6 +48,7 @@
         .sub-item-name { font-size: 14px; font-weight: 500; }
         .sub-controls { display: flex; align-items: center; gap: 10px; }
         .sub-btn { width: 28px; height: 28px; border-radius: 50%; background: #dee2e6; color: #333; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .sub-btn:active { background: #adb5bd; }
 
         .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
         .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
@@ -169,9 +171,12 @@
             </div>
         </div>
 
-        <!-- 炸全雞與全雞餐專用的醬料複選區塊 -->
+        <!-- 醬料選擇區塊 (上限 2 份) -->
         <div id="sauce-section" style="display: none;">
-            <div class="modal-option-title" style="color: #e63946;">🥣 醬料選擇（可自由複選數量）：</div>
+            <div class="modal-option-title" style="color: #e63946;">
+                🥣 醬料選擇
+                <span class="limit-hint">已選 <span id="sauce-count">0</span> / 2 份</span>
+            </div>
             <div id="sauce-list-container">
                 <div class="sub-item-row">
                     <span class="sub-item-name">番茄醬</span>
@@ -200,11 +205,14 @@
             </div>
         </div>
 
-        <!-- 全雞餐專用的附餐複選區塊 -->
+        <!-- 附餐選擇區塊 (上限 3 份) -->
         <div id="chicken-sides-section" style="display: none;">
-            <div class="modal-option-title" style="color: #d90429;">🍗 附餐選擇（可自由複選數量，例如米血 2 份）：</div>
+            <div class="modal-option-title" style="color: #d90429;">
+                🍗 附餐選擇
+                <span class="limit-hint">已選 <span id="side-count">0</span> / 3 份</span>
+            </div>
             <div id="sides-list-container">
-                <!-- 動態帶入 19 種附餐選項供加減 -->
+                <!-- 動態帶入 19 種附餐供加減 -->
             </div>
         </div>
 
@@ -308,7 +316,21 @@
         document.getElementById('option-modal').style.display = 'flex';
     }
 
+    function getTotalSauces() {
+        let sum = 0;
+        for (let s in currentModalItem.sauces) { sum += currentModalItem.sauces[s]; }
+        return sum;
+    }
+
+    function getTotalSides() {
+        let sum = 0;
+        for (let s in currentModalItem.sides) { sum += currentModalItem.sides[s]; }
+        return sum;
+    }
+
     function renderSaucesUI() {
+        let total = getTotalSauces();
+        document.getElementById('sauce-count').innerText = total;
         for (let sauce in currentModalItem.sauces) {
             let el = document.getElementById(`sauce_${sauce}`);
             if (el) el.innerText = currentModalItem.sauces[sauce];
@@ -316,6 +338,8 @@
     }
 
     function renderSidesUI() {
+        let total = getTotalSides();
+        document.getElementById('side-count').innerText = total;
         let container = document.getElementById('sides-list-container');
         let html = '';
         allSidesList.forEach(side => {
@@ -336,14 +360,23 @@
 
     function changeSubQty(type, key, delta) {
         if (type === 'sauce') {
+            let currentTotal = getTotalSauces();
+            if (delta > 0 && currentTotal >= 2) {
+                alert('醬料總共只能選擇 2 份！');
+                return;
+            }
             currentModalItem.sauces[key] += delta;
             if (currentModalItem.sauces[key] < 0) currentModalItem.sauces[key] = 0;
             renderSaucesUI();
         } else if (type === 'side') {
+            let currentTotal = getTotalSides();
+            if (delta > 0 && currentTotal >= 3) {
+                alert('附餐總共只能選擇 3 份！');
+                return;
+            }
             currentModalItem.sides[key] += delta;
             if (currentModalItem.sides[key] < 0) currentModalItem.sides[key] = 0;
-            let el = document.getElementById(`side_${key}`);
-            if (el) el.innerText = currentModalItem.sides[key];
+            renderSidesUI();
         }
     }
 
@@ -385,14 +418,30 @@
         if (isOnlyQty) {
             specText = "標準";
         } else if (isFriedWholeChicken) {
+            let totalSauces = getTotalSauces();
+            if (totalSauces !== 2) {
+                alert('【炸全雞】醬料總共必須剛好選擇 2 份！');
+                return;
+            }
             let sauceSummary = [];
             for (let sauce in currentModalItem.sauces) {
                 if (currentModalItem.sauces[sauce] > 0) {
                     sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
                 }
             }
-            specText = `醬料: ${sauceSummary.length > 0 ? sauceSummary.join(', ') : '無'} | 胡椒、辣椒另外附`;
+            specText = `醬料: ${sauceSummary.join(', ')} | 胡椒、辣椒另外附`;
         } else if (isChickenMeal) {
+            let totalSauces = getTotalSauces();
+            if (totalSauces !== 2) {
+                alert('【全雞餐】醬料總共必須剛好選擇 2 份！');
+                return;
+            }
+            let totalSides = getTotalSides();
+            if (totalSides !== 3) {
+                alert('【全雞餐】附餐總共必須剛好選擇 3 份！');
+                return;
+            }
+
             let sauceSummary = [];
             for (let sauce in currentModalItem.sauces) {
                 if (currentModalItem.sauces[sauce] > 0) {
@@ -405,7 +454,7 @@
                     sideSummary.push(`${side}x${currentModalItem.sides[side]}`);
                 }
             }
-            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${sauceSummary.join(', ') || '無'} | 附餐: ${sideSummary.join(', ') || '無'}`;
+            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${sauceSummary.join(', ')} | 附餐: ${sideSummary.join(', ')}`;
         } else {
             specText = `${currentModalItem.pepper}/${currentModalItem.spicy}`;
         }
