@@ -132,6 +132,11 @@
             alert('送出訂單發生錯誤，請稍後再試');
         });
     }
+    {% if item.is_sold_out %}
+    <button disabled style="background-color: #ccc; cursor: not-allowed;">已售罄</button>
+{% else %}
+    <button onclick="addToCart('{{ id }}', '{{ item.name }}', {{ item.price }})">加到購物車</button>
+{% endif %}
 </script>
 </body>
 </html>
