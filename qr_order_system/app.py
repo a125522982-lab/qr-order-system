@@ -7,14 +7,12 @@ app = Flask(__name__)
 
 MENU_FILE = "menu.json"
 
-# 預設菜單
 default_menu = {
     "1": {"name": "招牌牛肉麵", "price": 180},
     "2": {"name": "黃金排骨飯", "price": 150},
     "3": {"name": "手工水餃", "price": 80},
 }
 
-# 暫存訂單與已完成訂單
 ORDERS = []
 COMPLETED_ORDERS = []
 
@@ -81,33 +79,27 @@ def place_order():
             return jsonify({"success": False, "message": "無效資料"}), 400
 
         raw_items = data.get("items", [])
-        cleaned_items = []
+        safe_item_list = []
         
-        # 強制解析任何格式的品項，絕不漏接
+        # 確保 items 絕對是一個乾淨的 List，避開任何 método 混淆
         if isinstance(raw_items, list):
             for item in raw_items:
                 if isinstance(item, dict):
-                    cleaned_items.append({
-                        "name": str(item.get("name", item.get("title", "未知餐點"))),
+                    safe_item_list.append({
+                        "name": str(item.get("name", "未知餐點")),
                         "price": int(item.get("price", 0)),
-                        "quantity": int(item.get("quantity", item.get("qty", 1))),
-                    })
-                elif isinstance(item, str):
-                    cleaned_items.append({
-                        "name": item,
-                        "price": 0,
-                        "quantity": 1,
+                        "quantity": int(item.get("quantity", 1)),
                     })
 
         new_order = {
             "id": str(int(time.time() * 1000)),
             "table": str(data.get("table", "1")),
-            "items": cleaned_items,
+            "food_list": safe_item_list,  # 改用安全的欄位名稱避開 .items() 衝突
             "total": int(data.get("total", 0)),
         }
 
         ORDERS.append(new_order)
-        print("成功收到並解析訂單:", new_order)
+        print("成功接收訂單:", new_order)
         return jsonify({"success": True, "message": "ok"})
     except Exception as e:
         print("訂單接收報錯:", str(e))
@@ -122,7 +114,6 @@ def complete_order():
             return jsonify({"success": False, "message": "無效的訂單編號"}), 400
 
         target_id = str(data["order_id"])
-        
         found_order = None
         for i, order in enumerate(ORDERS):
             if str(order.get("id")) == target_id:
@@ -135,7 +126,6 @@ def complete_order():
 
         return jsonify({"success": False, "message": "找不到該筆訂單"}), 404
     except Exception as e:
-        print("完成訂單報錯:", str(e))
         return jsonify({"success": False, "message": str(e)}), 500
 
 
