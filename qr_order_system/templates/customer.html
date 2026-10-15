@@ -19,6 +19,7 @@
         .tab-btn.active { background: #e63946; color: white; }
         .menu-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .menu-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; padding: 12px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .menu-item[data-category="promo"] { background: #fff9db; border-color: #fcc419; }
         .item-info { flex-grow: 1; padding-right: 10px; }
         .item-name { font-weight: bold; font-size: 17px; margin-bottom: 6px; color: #222; }
         .item-price { color: #e63946; font-weight: bold; font-size: 16px; }
@@ -31,7 +32,6 @@
         .total-price { font-size: 20px; font-weight: bold; text-align: right; margin-bottom: 15px; color: #d90429; }
         .checkout-btn { width: 100%; padding: 14px; background: #2b9348; font-size: 18px; border-radius: 8px; }
         
-        /* 彈窗樣式 */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: flex-end; }
         .modal-card { width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; background: white; border-radius: 16px 16px 0 0; padding: 20px; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
@@ -74,19 +74,13 @@
 
     {% if not is_open %}
         <div class="closed-banner">
-            🔴 目前為非營業時間，暫停線上點餐！<br>
-            <span style="font-size: 14px; font-weight: normal; margin-top: 8px; display: inline-block;">
-                營業時間：<br>
-                週三、週四：11:30 - 19:30<br>
-                週五、週六：11:30 - 21:30<br>
-                週日：11:30 - 20:00<br>
-                (週一、週二公休)
-            </span>
+            🔴 目前為非營業時間，暫停線上點餐！
         </div>
     {% else %}
         <div id="order-view">
             <div class="category-tabs">
                 <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
+                <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
                 <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
                 <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
                 <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
@@ -99,7 +93,9 @@
                 {% for id, item in menu.items() %}
                     <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
                         <div class="item-info">
-                            <div class="item-name">{{ item.get('name', '') }}</div>
+                            <div class="item-name">
+                                {% if item.get('category') == 'promo' %}🔥 {% endif %}{{ item.get('name', '') }}
+                            </div>
                             <div class="item-price">${{ item.get('price', 0) }}</div>
                         </div>
                         <div>
@@ -166,7 +162,6 @@
             <button onclick="closeOptionModal()" style="background: #e9ecef; color: #333; padding: 4px 10px; font-size: 18px;">✕</button>
         </div>
 
-        <!-- 一般炸物才顯示的胡椒與辣度區塊 -->
         <div id="seasoning-section">
             <div class="modal-option-title">🧂 胡椒選擇：</div>
             <div class="options-group" id="pepper-options">
@@ -184,7 +179,6 @@
             </div>
         </div>
 
-        <!-- 醬料選擇區塊 -->
         <div id="sauce-section" style="display: none;">
             <div id="whole-chicken-notice" class="notice-banner" style="display: none;">
                 ⚠️ 提示：本餐點胡椒、辣椒一律另外附！
@@ -221,15 +215,12 @@
             </div>
         </div>
 
-        <!-- 附餐選擇區塊 -->
         <div id="chicken-sides-section" style="display: none;">
             <div class="modal-option-title" style="color: #d90429;">
                 🍗 附餐選擇
                 <span class="limit-hint">已選 <span id="side-count">0</span> / 3 份</span>
             </div>
-            <div id="sides-list-container">
-                <!-- 動態帶入 19 種附餐 -->
-            </div>
+            <div id="sides-list-container"></div>
         </div>
 
         <div class="modal-qty-box">
@@ -300,7 +291,7 @@
         let chickenSidesSec = document.getElementById('chicken-sides-section');
         let wholeChickenNotice = document.getElementById('whole-chicken-notice');
 
-        let isOnlyQty = (category === 'drink' || name.includes('煉香花月圓') || name.includes('煉乳銀絲卷'));
+        let isOnlyQty = (category === 'drink' || category === 'promo' || name.includes('煉香花月圓') || name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (name.includes('炸全雞'));
         let isChickenMeal = (name.includes('全雞餐'));
 
@@ -309,9 +300,9 @@
             sauceSec.style.display = 'none';
             chickenSidesSec.style.display = 'none';
         } else if (isFriedWholeChicken) {
-            seasoningSec.style.display = 'none'; // 炸全雞不選胡椒辣椒
+            seasoningSec.style.display = 'none';
             sauceSec.style.display = 'block';
-            wholeChickenNotice.style.display = 'block'; // 顯示醒目標示
+            wholeChickenNotice.style.display = 'block';
             chickenSidesSec.style.display = 'none';
             renderSaucesUI();
         } else if (isChickenMeal) {
@@ -430,7 +421,7 @@
 
     function confirmAddToCart() {
         let specText = "";
-        let isOnlyQty = (currentModalItem.category === 'drink' || currentModalItem.name.includes('煉香花月圓') || currentModalItem.name.includes('煉乳銀絲卷'));
+        let isOnlyQty = (currentModalItem.category === 'drink' || currentModalItem.category === 'promo' || currentModalItem.name.includes('煉香花月圓') || currentModalItem.name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (currentModalItem.name.includes('炸全雞'));
         let isChickenMeal = (currentModalItem.name.includes('全雞餐'));
 
