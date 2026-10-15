@@ -24,6 +24,7 @@
         .checkout-btn { width: 100%; padding: 12px; background: #28a745; font-size: 18px; }
         .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 15px; border-radius: 6px; text-align: center; }
         .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 10px 0; }
+        .finish-btn { width: 100%; padding: 12px; background: #dc3545; font-size: 18px; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -89,15 +90,29 @@
                 <ul id="track-items" style="padding-left: 20px; margin: 5px 0;"></ul>
                 <p><b>總金額：$<span id="track-total">0</span></b></p>
             </div>
+            <!-- 取餐完成按鈕 -->
+            <button id="finish-order-btn" class="finish-btn" style="display: none;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
         </div>
     </div>
 </div>
+
+<!-- 客戶端專屬提示音檔 (static/customer_alert.mp3)，設定 loop 循環播放 -->
+<audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
     let cart = [];
     const tableNumber = "{{ table }}";
     let currentOrderId = null;
     let statusInterval = null;
+    let isCompletedAlertTriggered = false;
+    const alertAudio = document.getElementById('customer-alert-sound');
+
+    // 頁面任意點擊即可解鎖音訊播放限制
+    document.addEventListener('click', () => {
+        if (alertAudio.paused) {
+            alertAudio.load();
+        }
+    }, { once: true });
 
     function addToCart(id, name, price) {
         let existingItem = cart.find(item => item.id === id);
@@ -192,12 +207,12 @@
         .then(data => {
             if (data.success) {
                 currentOrderId = data.order_id;
+                isCompletedAlertTriggered = false;
                 
-                // 隱藏點餐區，顯示訂單追蹤區
                 document.getElementById('order-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
+                document.getElementById('finish-order-btn').style.display = 'none';
                 
-                // 填入追蹤明細資訊
                 document.getElementById('track-phone').innerText = phone.slice(-4);
                 document.getElementById('track-total').innerText = total;
                 
@@ -207,7 +222,6 @@
                 });
                 document.getElementById('track-items').innerHTML = itemsHtml;
 
-                // 開始定時向後台同步訂單狀態
                 startStatusPolling();
             } else {
                 alert('送出失敗：' + data.message);
@@ -219,7 +233,6 @@
         });
     }
 
-    // 定期向伺服器查詢訂單狀態
     function startStatusPolling() {
         if (statusInterval) clearInterval(statusInterval);
 
@@ -242,14 +255,41 @@
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已製作完成，請至櫃檯憑電話後四碼取餐！';
                         statusEl.style.color = '#2a9d8f';
-                        // 可選：跳出提示框提醒客人
-                        // alert('🎉 您的餐點已完成，可以取餐囉！');
+                        
+                        document.getElementById('finish-order-btn').style.display = 'block';
+
+                        // 當餐點完成時，播放客戶端專屬提示音
+                        if (!isCompletedAlertTriggered) {
+                            isCompletedAlertTriggered = true;
+                            alertAudio.play().catch(err => {
+                                console.log("音效自動撥放受限", err);
+                            });
+                        }
                     }
                 }
             } catch (e) {
                 console.log("狀態同步中...", e);
             }
         }, 3000);
+    }
+
+    // 點擊「取餐完成」按鈕後，關閉提示音並返回點餐主畫面
+    function finishOrder() {
+        if (statusInterval) clearInterval(statusInterval);
+        
+        // 停止並重置音檔
+        alertAudio.pause();
+        alertAudio.currentTime = 0;
+
+        // 清空購物車與狀態
+        cart = [];
+        updateCartUI();
+        currentOrderId = null;
+        isCompletedAlertTriggered = false;
+
+        // 切回點餐頁面
+        document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('order-view').style.display = 'block';
     }
 </script>
 </body>
