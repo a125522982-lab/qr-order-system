@@ -120,6 +120,11 @@ def load_hours():
         return default_hours
 
 
+def save_hours(hours_data):
+    with open(HOURS_FILE, "w", encoding="utf-8") as f:
+        json.dump(hours_data, f, ensure_ascii=False, indent=4)
+
+
 def check_is_open(hours_data):
     if hours_data.get("force_close", False):
         return False
@@ -164,6 +169,19 @@ def admin_page():
         total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
         item_stats={}
     )
+
+
+# --- 營業時間儲存 API ---
+@app.route("/api/hours/save", methods=["POST"])
+def update_hours():
+    try:
+        data = request.get_json(silent=True)
+        if data and isinstance(data, dict):
+            save_hours(data)
+            return jsonify({"success": True})
+        return jsonify({"success": False, "message": "無效資料"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 # --- 優惠專區新增與刪除 API ---
