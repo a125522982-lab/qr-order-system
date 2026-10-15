@@ -2,7 +2,6 @@ import json
 import os
 import socket
 import time
-from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -92,7 +91,6 @@ ACCEPTED_ORDERS = []
 COMPLETED_ORDERS = []
 CANCELLED_ORDERS = []
 
-
 def load_menu():
     if not os.path.exists(MENU_FILE):
         with open(MENU_FILE, "w", encoding="utf-8") as f:
@@ -103,11 +101,9 @@ def load_menu():
     except Exception:
         return default_menu
 
-
 def save_menu(menu_data):
     with open(MENU_FILE, "w", encoding="utf-8") as f:
         json.dump(menu_data, f, ensure_ascii=False, indent=4)
-
 
 def load_hours():
     if not os.path.exists(HOURS_FILE):
@@ -119,56 +115,20 @@ def load_hours():
     except Exception:
         return default_hours
 
-
 def save_hours(hours_data):
     with open(HOURS_FILE, "w", encoding="utf-8") as f:
         json.dump(hours_data, f, ensure_ascii=False, indent=4)
 
-
-def check_is_open(hours_data):
-    if hours_data.get("force_close", False):
-        return False
-    
-    weekday_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    now = datetime.now()
-    today_key = weekday_map[now.weekday()]
-    today_rule = hours_data.get(today_key, {})
-    
-    if not today_rule.get("enabled", False):
-        return False
-        
-    open_str = today_rule.get("open", "").strip()
-    close_str = today_rule.get("close", "").strip()
-    
-    if not open_str or not close_str:
-        return True
-        
-    try:
-        open_time = datetime.strptime(open_str, "%H:%M").time()
-        close_time = datetime.strptime(close_str, "%H:%M").time()
-        now_time = now.time()
-        
-        if open_time <= close_time:
-            return open_time <= now_time <= close_time
-        else:
-            return now_time >= open_time or now_time <= close_time
-    except Exception:
-        return True
-
-
 @app.route("/")
 def index():
     return '<h1>酷嗑斯美式炸雞</h1><p><a href="/menu?table=1">前往點餐</a> | <a href="/admin">後台</a></p>'
-
 
 @app.route("/menu")
 def customer_menu():
     table = request.args.get("table", "1")
     menu = load_menu()
     hours = load_hours()
-    is_open = check_is_open(hours)
-    return render_template("customer.html", table=table, menu=menu, is_open=is_open)
-
+    return render_template("customer.html", table=table, menu=menu, hours=hours)
 
 @app.route("/admin")
 def admin_page():
@@ -180,10 +140,8 @@ def admin_page():
         accepted_orders=ACCEPTED_ORDERS,
         completed_orders=COMPLETED_ORDERS,
         cancelled_orders=CANCELLED_ORDERS,
-        total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
-        item_stats={}
+        total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS)
     )
-
 
 @app.route("/api/hours/save", methods=["POST"])
 def update_hours():
@@ -195,22 +153,6 @@ def update_hours():
         return jsonify({"success": False, "message": "無效資料"}), 400
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
-
-@app.route("/api/menu/toggle_soldout", methods=["POST"])
-def toggle_soldout():
-    try:
-        data = request.get_json(silent=True)
-        item_id = str(data.get("item_id", ""))
-        menu = load_menu()
-        if item_id in menu:
-            menu[item_id]["is_sold_out"] = not menu[item_id].get("is_sold_out", False)
-            save_menu(menu)
-            return jsonify({"success": True})
-        return jsonify({"success": False, "message": "找不到該品項"}), 404
-    except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
-
 
 @app.route("/api/promo/add", methods=["POST"])
 def add_promo_item():
@@ -233,7 +175,6 @@ def add_promo_item():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
-
 @app.route("/api/promo/delete", methods=["POST"])
 def delete_promo_item():
     try:
@@ -250,7 +191,6 @@ def delete_promo_item():
         return jsonify({"success": False, "message": "找不到該優惠品項"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
-
 
 @app.route("/api/order", methods=["POST"])
 def place_order():
@@ -278,7 +218,6 @@ def place_order():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
-
 @app.route("/api/order/status", methods=["GET"])
 def check_order_status():
     order_id = request.args.get("order_id")
@@ -295,7 +234,6 @@ def check_order_status():
                 return jsonify({"success": True, "order": o})
                 
     return jsonify({"success": False}), 404
-
 
 @app.route("/api/order/accept", methods=["POST"])
 def accept_order():
@@ -326,7 +264,6 @@ def accept_order():
             
     return jsonify({"success": False}), 404
 
-
 @app.route("/api/order/complete", methods=["POST"])
 def complete_order():
     data = request.get_json(silent=True) or {}
@@ -338,7 +275,6 @@ def complete_order():
             COMPLETED_ORDERS.append(found)
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
-
 
 @app.route("/api/order/cancel", methods=["POST"])
 def cancel_order():
@@ -352,7 +288,6 @@ def cancel_order():
                 CANCELLED_ORDERS.append(found)
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
-
 
 if __name__ == "__main__":
     app.run(debug=True)
