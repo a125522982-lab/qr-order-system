@@ -42,10 +42,11 @@
         .option-btn { padding: 8px 14px; border: 1px solid #ced4da; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; font-weight: 500; }
         .option-btn.selected { background: #e63946; color: white; border-color: #e63946; }
         
-        /* 複選方格群組 (支援完美複選) */
-        .checkbox-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
-        .checkbox-item { display: flex; align-items: center; gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #ced4da; font-size: 14px; cursor: pointer; user-select: none; }
-        .checkbox-item input { width: 18px; height: 18px; accent-color: #e63946; cursor: pointer; }
+        /* 數量加減小工具列 */
+        .sub-item-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e9ecef; }
+        .sub-item-name { font-size: 14px; font-weight: 500; }
+        .sub-controls { display: flex; align-items: center; gap: 10px; }
+        .sub-btn { width: 28px; height: 28px; border-radius: 50%; background: #dee2e6; color: #333; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
 
         .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
         .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
@@ -168,39 +169,42 @@
             </div>
         </div>
 
-        <!-- 炸全雞與全雞餐專用的醬料二選區塊 -->
+        <!-- 炸全雞與全雞餐專用的醬料複選區塊 -->
         <div id="sauce-section" style="display: none;">
-            <div class="modal-option-title" style="color: #e63946;">🥣 請選擇醬料（剛好 2 樣）：</div>
-            <div class="checkbox-group">
-                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="番茄醬"> 番茄醬</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="起司醬"> 起司醬</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-sauce" value="香菜檸檬醬"> 香菜檸檬醬</label>
+            <div class="modal-option-title" style="color: #e63946;">🥣 醬料選擇（可自由複選數量）：</div>
+            <div id="sauce-list-container">
+                <div class="sub-item-row">
+                    <span class="sub-item-name">番茄醬</span>
+                    <div class="sub-controls">
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '番茄醬', -1)">-</button>
+                        <span id="sauce_番茄醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '番茄醬', 1)">+</button>
+                    </div>
+                </div>
+                <div class="sub-item-row">
+                    <span class="sub-item-name">起司醬</span>
+                    <div class="sub-controls">
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '起司醬', -1)">-</button>
+                        <span id="sauce_起司醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '起司醬', 1)">+</button>
+                    </div>
+                </div>
+                <div class="sub-item-row">
+                    <span class="sub-item-name">香菜檸檬醬</span>
+                    <div class="sub-controls">
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '香菜檸檬醬', -1)">-</button>
+                        <span id="sauce_香菜檸檬醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
+                        <button class="sub-btn" onclick="changeSubQty('sauce', '香菜檸檬醬', 1)">+</button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 全雞餐專用的附餐三選區塊 -->
+        <!-- 全雞餐專用的附餐複選區塊 -->
         <div id="chicken-sides-section" style="display: none;">
-            <div class="modal-option-title" style="color: #d90429;">🍗 請選擇 3 樣附餐（可複選）：</div>
-            <div class="checkbox-group">
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="米血"> 米血</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="薯餅"> 薯餅</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="甜不辣"> 甜不辣</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="花枝丸"> 花枝丸</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="洋蔥圈"> 洋蔥圈</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="乳酪棒"> 乳酪棒</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="芋泥球"> 芋泥球</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="起司球"> 起司球</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="杏鮑菇"> 杏鮑菇</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="美式脆薯"> 美式脆薯</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="麥嗑雞塊"> 麥嗑雞塊</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="起司薯球"> 起司薯球</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="帶皮薯瓣"> 帶皮薯瓣</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="椒鹽銀絲卷"> 椒鹽銀絲卷</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="煉乳銀絲卷"> 煉乳銀絲卷</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="煉香花月圓"> 煉香花月圓</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="娘惹山藥捲"> 娘惹山藥捲</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="深海鱈魚條"> 深海鱈魚條</label>
-                <label class="checkbox-item"><input type="checkbox" name="chicken-side" value="黃金地瓜條"> 黃金地瓜條</label>
+            <div class="modal-option-title" style="color: #d90429;">🍗 附餐選擇（可自由複選數量，例如米血 2 份）：</div>
+            <div id="sides-list-container">
+                <!-- 動態帶入 19 種附餐選項供加減 -->
             </div>
         </div>
 
@@ -224,11 +228,17 @@
     let isCompletedAlertTriggered = false;
     const alertAudio = document.getElementById('customer-alert-sound');
 
+    const allSidesList = [
+        "米血", "薯餅", "甜不辣", "花枝丸", "洋蔥圈", "乳酪棒", "芋泥球", "起司球", 
+        "杏鮑菇", "美式脆薯", "麥嗑雞塊", "起司薯球", "帶皮薯瓣", "椒鹽銀絲卷", 
+        "煉乳銀絲卷", "煉香花月圓", "娘惹山藥捲", "深海鱈魚條", "黃金地瓜條"
+    ];
+
+    let currentModalItem = { id: '', name: '', price: 0, qty: 1, pepper: '要胡椒', spicy: '不辣', category: '', sauces: {}, sides: {} };
+
     document.addEventListener('click', () => {
         if (alertAudio.paused) { alertAudio.load(); }
     }, { once: true });
-
-    let currentModalItem = { id: '', name: '', price: 0, qty: 1, pepper: '要胡椒', spicy: '不辣', category: '' };
 
     function filterMenu(category, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -243,7 +253,19 @@
     }
 
     function openOptionModal(id, name, price, category) {
-        currentModalItem = { id: id, name: name, price: price, qty: 1, pepper: '要胡椒', spicy: '不辣', category: category };
+        currentModalItem = { 
+            id: id, 
+            name: name, 
+            price: price, 
+            qty: 1, 
+            pepper: '要胡椒', 
+            spicy: '不辣', 
+            category: category,
+            sauces: { "番茄醬": 0, "起司醬": 0, "香菜檸檬醬": 0 },
+            sides: {}
+        };
+
+        allSidesList.forEach(side => { currentModalItem.sides[side] = 0; });
         
         document.getElementById('modal-item-name').innerText = name;
         document.getElementById('modal-item-price').innerText = '$' + price;
@@ -263,15 +285,15 @@
             chickenSidesSec.style.display = 'none';
         } else if (isFriedWholeChicken) {
             seasoningSec.style.display = 'none'; // 炸全雞去除胡椒辣椒
-            sauceSec.style.display = 'block';    // 醬料 3 選 2
+            sauceSec.style.display = 'block';
             chickenSidesSec.style.display = 'none';
-            document.querySelectorAll('input[name="chicken-sauce"]').forEach(cb => cb.checked = false);
+            renderSaucesUI();
         } else if (isChickenMeal) {
             seasoningSec.style.display = 'block';
-            sauceSec.style.display = 'block';    // 醬料 3 選 2
-            chickenSidesSec.style.display = 'block'; // 附餐 19 選 3
-            document.querySelectorAll('input[name="chicken-sauce"]').forEach(cb => cb.checked = false);
-            document.querySelectorAll('input[name="chicken-side"]').forEach(cb => cb.checked = false);
+            sauceSec.style.display = 'block';
+            chickenSidesSec.style.display = 'block';
+            renderSaucesUI();
+            renderSidesUI();
             resetOptionGroup('pepper-options', '要胡椒');
             resetOptionGroup('spicy-options', '不辣');
         } else {
@@ -284,6 +306,45 @@
 
         updateModalSubtotal();
         document.getElementById('option-modal').style.display = 'flex';
+    }
+
+    function renderSaucesUI() {
+        for (let sauce in currentModalItem.sauces) {
+            let el = document.getElementById(`sauce_${sauce}`);
+            if (el) el.innerText = currentModalItem.sauces[sauce];
+        }
+    }
+
+    function renderSidesUI() {
+        let container = document.getElementById('sides-list-container');
+        let html = '';
+        allSidesList.forEach(side => {
+            let count = currentModalItem.sides[side] || 0;
+            html += `
+                <div class="sub-item-row">
+                    <span class="sub-item-name">${side}</span>
+                    <div class="sub-controls">
+                        <button class="sub-btn" onclick="changeSubQty('side', '${side}', -1)">-</button>
+                        <span id="side_${side}" style="font-weight: bold; width: 20px; text-align: center;">${count}</span>
+                        <button class="sub-btn" onclick="changeSubQty('side', '${side}', 1)">+</button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function changeSubQty(type, key, delta) {
+        if (type === 'sauce') {
+            currentModalItem.sauces[key] += delta;
+            if (currentModalItem.sauces[key] < 0) currentModalItem.sauces[key] = 0;
+            renderSaucesUI();
+        } else if (type === 'side') {
+            currentModalItem.sides[key] += delta;
+            if (currentModalItem.sides[key] < 0) currentModalItem.sides[key] = 0;
+            let el = document.getElementById(`side_${key}`);
+            if (el) el.innerText = currentModalItem.sides[key];
+        }
     }
 
     function closeOptionModal() {
@@ -324,34 +385,27 @@
         if (isOnlyQty) {
             specText = "標準";
         } else if (isFriedWholeChicken) {
-            let selectedSauces = [];
-            document.querySelectorAll('input[name="chicken-sauce"]:checked').forEach(cb => {
-                selectedSauces.push(cb.value);
-            });
-            if (selectedSauces.length !== 2) {
-                alert('【炸全雞】醬料請務必剛好選擇 2 樣！');
-                return;
+            let sauceSummary = [];
+            for (let sauce in currentModalItem.sauces) {
+                if (currentModalItem.sauces[sauce] > 0) {
+                    sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
+                }
             }
-            specText = `醬料: ${selectedSauces.join(', ')} | 胡椒、辣椒另外附`;
+            specText = `醬料: ${sauceSummary.length > 0 ? sauceSummary.join(', ') : '無'} | 胡椒、辣椒另外附`;
         } else if (isChickenMeal) {
-            let selectedSauces = [];
-            document.querySelectorAll('input[name="chicken-sauce"]:checked').forEach(cb => {
-                selectedSauces.push(cb.value);
-            });
-            if (selectedSauces.length !== 2) {
-                alert('【全雞餐】醬料請務必剛好選擇 2 樣！');
-                return;
+            let sauceSummary = [];
+            for (let sauce in currentModalItem.sauces) {
+                if (currentModalItem.sauces[sauce] > 0) {
+                    sauceSummary.push(`${sauce}x${currentModalItem.sauces[sauce]}`);
+                }
             }
-
-            let selectedSides = [];
-            document.querySelectorAll('input[name="chicken-side"]:checked').forEach(cb => {
-                selectedSides.push(cb.value);
-            });
-            if (selectedSides.length !== 3) {
-                alert('【全雞餐】附餐請務必剛好選擇 3 樣！');
-                return;
+            let sideSummary = [];
+            for (let side in currentModalItem.sides) {
+                if (currentModalItem.sides[side] > 0) {
+                    sideSummary.push(`${side}x${currentModalItem.sides[side]}`);
+                }
             }
-            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${selectedSauces.join(', ')} | 附餐: ${selectedSides.join(', ')}`;
+            specText = `${currentModalItem.pepper}/${currentModalItem.spicy} | 醬料: ${sauceSummary.join(', ') || '無'} | 附餐: ${sideSummary.join(', ') || '無'}`;
         } else {
             specText = `${currentModalItem.pepper}/${currentModalItem.spicy}`;
         }
