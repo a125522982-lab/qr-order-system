@@ -104,10 +104,14 @@ def admin_page():
             if isinstance(o, dict) and callable(o.get("food_list")) is False:
                 fl = o.get("food_list", [])
                 if isinstance(fl, list):
+                    phone = str(o.get("phone", "0000000000"))
+                    # 自動擷取完整電話的後四碼作為取餐編號
+                    phone_last4 = phone[-4:] if len(phone) >= 4 else "0000"
                     cleaned.append({
                         "id": str(o.get("id", time.time())),
                         "table": str(o.get("table", "1")),
-                        "phone_last4": str(o.get("phone_last4", "----")),
+                        "phone": phone,
+                        "phone_last4": phone_last4,
                         "food_list": fl,
                         "total": int(o.get("total", 0))
                     })
@@ -177,10 +181,14 @@ def place_order():
                         "quantity": int(item.get("quantity", 1)),
                     })
 
+        phone = str(data.get("phone", "0000000000"))
+        phone_last4 = phone[-4:] if len(phone) >= 4 else "0000"
+
         new_order = {
             "id": str(int(time.time() * 1000)),
             "table": str(data.get("table", "1")),
-            "phone_last4": str(data.get("phone_last4", "0000")),
+            "phone": phone,
+            "phone_last4": phone_last4,
             "food_list": safe_item_list,
             "total": int(data.get("total", 0)),
         }
