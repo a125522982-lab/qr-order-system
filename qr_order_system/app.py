@@ -126,10 +126,34 @@ def save_hours(hours_data):
 
 
 def check_is_open(hours_data):
-    # 只要後台沒有手動勾選強制打烊，客戶端就永遠開放點餐！
     if hours_data.get("force_close", False):
         return False
-    return True
+    
+    weekday_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    now = datetime.now()
+    today_key = weekday_map[now.weekday()]
+    today_rule = hours_data.get(today_key, {})
+    
+    if not today_rule.get("enabled", False):
+        return False
+        
+    open_str = today_rule.get("open", "").strip()
+    close_str = today_rule.get("close", "").strip()
+    
+    if not open_str or not close_str:
+        return True
+        
+    try:
+        open_time = datetime.strptime(open_str, "%H:%M").time()
+        close_time = datetime.strptime(close_str, "%H:%M").time()
+        now_time = now.time()
+        
+        if open_time <= close_time:
+            return open_time <= now_time <= close_time
+        else:
+            return now_time >= open_time or now_time <= close_time
+    except Exception:
+        return True
 
 
 @app.route("/")
@@ -161,7 +185,6 @@ def admin_page():
     )
 
 
-# --- 營業時間儲存 API ---
 @app.route("/api/hours/save", methods=["POST"])
 def update_hours():
     try:
@@ -174,7 +197,6 @@ def update_hours():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# --- 菜單售罄切換 API ---
 @app.route("/api/menu/toggle_soldout", methods=["POST"])
 def toggle_soldout():
     try:
@@ -190,7 +212,6 @@ def toggle_soldout():
         return jsonify({"success": False, "message": str(e)}), 500
 
 
-# --- 優惠專區新增與刪除 API ---
 @app.route("/api/promo/add", methods=["POST"])
 def add_promo_item():
     try:
