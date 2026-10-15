@@ -26,8 +26,7 @@
 <body>
 <div class="container">
     <div class="status-bar">
-        <span>🟢 <b>即時連線中</b>：未接受訂單將持續播放提示音</span>
-        <button onclick="enableSound()" style="background: #17a2b8; font-size: 12px;">點此啟用提示音</button>
+        <span>🟢 <b>即時連線中</b>：提示音已常開，有新訂單將持續提醒</span>
     </div>
 
     <audio id="alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" preload="auto"></audio>
@@ -42,7 +41,7 @@
                 {% for order in orders %}
                     <div class="order-card" id="order-{{ order.id }}">
                         <div>
-                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> - 總金額: <b>${{ order.total }}</b><br>
+                            <b>{{ order.table }} 號桌</b> | 取餐編號: <span class="badge-phone">{{ order.phone_last4 }}</span> (完整電話: {{ order.phone }}) - 總金額: <b>${{ order.total }}</b><br>
                             內容：
                             {% if order.food_list is iterable and order.food_list is not string %}
                                 {% for item in order.food_list %}
@@ -158,25 +157,21 @@
 </div>
 
 <script>
-    let soundEnabled = false;
     const soundEl = document.getElementById('alert-sound');
 
-    function enableSound() {
-        soundEnabled = true;
-        soundEl.play().then(() => {
-            soundEl.pause();
-            soundEl.currentTime = 0;
-            alert('提示音已成功啟用！');
-        }).catch(e => {
-            alert('啟用失敗，請再點擊一次');
-        });
-    }
+    // 頁面載入後自動嘗試解鎖音訊並常開
+    document.addEventListener('click', () => {
+        if (soundEl.paused) {
+            soundEl.load();
+        }
+    }, { once: true });
 
     function playCustomSound() {
-        if (!soundEnabled) return;
         try {
             soundEl.currentTime = 0;
-            soundEl.play().catch(err => {});
+            soundEl.play().catch(err => {
+                console.log("等待首次互動後即可自動撥放音效");
+            });
         } catch (e) {}
     }
 
@@ -192,10 +187,9 @@
             
             let currentPendingCount = doc.querySelectorAll('#orders-list .order-card').length;
 
+            // 只要有待處理訂單，就會持續播放提示音
             if (currentPendingCount > 0) {
-                if (currentPendingCount > lastPendingCount || soundEnabled) {
-                    playCustomSound();
-                }
+                playCustomSound();
             }
             lastPendingCount = currentPendingCount;
 
