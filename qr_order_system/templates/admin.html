@@ -2,288 +2,223 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>酷嗑斯美式炸雞 - 商家後台管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>酷嗑斯美式炸雞 - 商家後台</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background: #f4f6f8; color: #333; }
-        h1, h2, h3 { color: #111; margin-top: 0; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; background: #f4f6f8; color: #333; }
+        h1 { font-size: 20px; text-align: center; margin: 5px 0 10px 0; color: #111; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 15px; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; vertical-align: middle; }
-        th { background: #f8f9fa; }
+        .stats-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
+        @media(min-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
         
-        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 4px; }
+        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 12px; border-radius: 8px; }
+        
+        /* 手機卡片化訂單樣式 */
+        .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
+        .order-card-title { font-size: 18px; font-weight: bold; color: #d90429; }
+        .order-card-body { font-size: 14px; line-height: 1.5; color: #444; }
+        
+        .btn-group-time { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        
+        button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 4px; }
         .btn-success { background: #2b9348; color: white; }
         .btn-danger { background: #d90429; color: white; }
         .btn-primary { background: #17a2b8; color: white; }
         .btn-warning { background: #ff922b; color: white; }
         
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-        @media(max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
+        .badge-type-booking { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .badge-type-immediate { background: #fef3c7; color: #d97706; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
         
-        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; border-radius: 8px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 15px; border-radius: 8px; }
+        .hours-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; flex-wrap: wrap; }
+        .hours-row label { width: 55px; font-weight: bold; }
         
-        .hours-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .hours-row label { width: 60px; font-weight: bold; }
-        details summary { font-size: 18px; font-weight: bold; color: #111; cursor: pointer; padding: 5px 0; outline: none; }
-        
-        .badge-type-booking { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .badge-type-immediate { background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🍗 酷嗑斯美式炸雞 - 商家後台管理</h1>
-    <p><a href="/menu?table=1" target="_blank">🔗 前端點餐頁面測試</a></p>
+    <h1>🍗 酷嗑斯美式炸雞 - 商家後台</h1>
 
-    <!-- 營業額與銷售統計 -->
+    <!-- 營業額與統計 -->
     <div class="stats-grid">
         <div class="revenue-box">
             <span>💰 今日總營業額：</span>
-            <span style="font-size: 24px; color: #155724;">${{ total_revenue }}</span>
+            <span style="font-size: 22px; color: #155724;">${{ total_revenue }}</span>
         </div>
         <div class="stats-box">
-            <h3 style="margin-bottom: 5px; font-size: 16px;">📊 販售品項統計 (已完成)</h3>
-            <ul style="margin: 0; padding-left: 18px; font-size: 14px; max-height: 80px; overflow-y: auto;">
+            <h3 style="margin: 0 0 5px 0; font-size: 15px;">📊 品項銷售統計</h3>
+            <ul style="margin: 0; padding-left: 18px; font-size: 13px; max-height: 70px; overflow-y: auto;">
                 {% if item_stats %}
                     {% for name, qty in item_stats.items() %}
                         <li>{{ name }}：<b>{{ qty }}</b> 份</li>
                     {% endfor %}
                 {% else %}
-                    <li style="color: #666;">尚無販售紀錄</li>
+                    <li style="color: #666;">尚無銷量紀錄</li>
                 {% endif %}
             </ul>
         </div>
     </div>
 
-    <!-- 即時訂單列表 -->
+    <!-- 訂單管理 -->
     <div class="card" style="border: 2px solid #2b9348;">
-        <h2>📋 即時訂單列表</h2>
-        
-        <!-- 待處理訂單 -->
-        <h3>⏳ 待處理訂單</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>類型</th>
-                    <th>桌號</th>
-                    <th>電話末四碼</th>
-                    <th>餐點內容與規格</th>
-                    <th>總金額</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for o in orders %}
-                <tr>
-                    <td>
+        <h2 style="font-size: 18px; margin-bottom: 10px;">📋 待處理訂單 ({{ orders | length }})</h2>
+        {% for o in orders %}
+            <div class="order-card" style="border-left: 5px solid #ff922b;">
+                <div class="order-card-header">
+                    <div>
                         {% if o.order_type == '預約單' %}
                             <span class="badge-type-booking">📅 預約 {{ o.booking_time }}</span>
                         {% else %}
                             <span class="badge-type-immediate">⚡ 即時單</span>
                         {% endif %}
-                    </td>
-                    <td><b>{{ o.table }} 號桌</b></td>
-                    <td><b>{{ o.phone_last4 }}</b></td>
-                    <td>
-                        <ul style="margin: 0; padding-left: 15px;">
-                            {% for item in o.food_list %}
-                            <li>{{ item.name }} x {{ item.quantity }}</li>
-                            {% endfor %}
-                        </ul>
-                    </td>
-                    <td style="color: #d90429; font-weight: bold;">${{ o.total }}</td>
-                    <td>
-                        {% if o.order_type == '預約單' %}
-                            <button class="btn-success" onclick="acceptOrder('{{ o.id }}', 0)">接受預約單</button>
-                        {% else %}
-                            <div style="font-size: 13px; margin-bottom: 4px; font-weight: bold;">回報等候時間：</div>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 5)">5分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 10)">10分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 15)">15分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 20)">20分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 25)">25分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 30)">30分</button>
-                        {% endif %}
-                        <button class="btn-danger" onclick="cancelOrder('{{ o.id }}')">取消</button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="6" style="text-align: center; color: #777;">目前沒有待處理訂單</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
+                    </div>
+                    <div class="order-card-title">末四碼: {{ o.phone_last4 }}</div>
+                </div>
+                <div class="order-card-body">
+                    <ul style="padding-left: 18px; margin: 5px 0;">
+                        {% for item in o.food_list %}
+                            <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                    <div style="text-align: right; font-size: 16px; font-weight: bold; color: #d90429; margin: 5px 0;">總金額: ${{ o.total }}</div>
+                    
+                    {% if o.order_type == '預約單' %}
+                        <div style="margin-top: 8px;">
+                            <button class="btn-success" style="width: 100%; padding: 10px;" onclick="acceptOrder('{{ o.id }}', 0)">接受預約單</button>
+                        </div>
+                    {% else %}
+                        <div style="font-size: 13px; font-weight: bold; color: #555; margin-top: 6px;">選擇即時等候時間並接單：</div>
+                        <div class="btn-group-time">
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 5)">5分</button>
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 10)">10分</button>
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 15)">15分</button>
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 20)">20分</button>
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 25)">25分</button>
+                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 30)">30分</button>
+                        </div>
+                    {% endif %}
+                    <button class="btn-danger" style="width: 100%; margin-top: 6px; padding: 8px;" onclick="cancelOrder('{{ o.id }}')">取消訂單</button>
+                </div>
+            </div>
+        {% else %}
+            <div style="text-align: center; color: #777; padding: 15px;">目前沒有待處理訂單</div>
+        {% endfor %}
 
-        <!-- 製作中訂單 -->
-        <h3 style="margin-top: 30px;">🔥 製作中訂單</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>類型</th>
-                    <th>桌號</th>
-                    <th>電話末四碼</th>
-                    <th>當前狀態 / 回報時間</th>
-                    <th>餐點內容與規格</th>
-                    <th>總金額</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for o in accepted_orders %}
-                <tr>
-                    <td>
+        <h2 style="font-size: 18px; margin-top: 20px; margin-bottom: 10px;">🔥 製作中訂單 ({{ accepted_orders | length }})</h2>
+        {% for o in accepted_orders %}
+            <div class="order-card" style="border-left: 5px solid #2b9348;">
+                <div class="order-card-header">
+                    <div>
                         {% if o.order_type == '預約單' %}
                             <span class="badge-type-booking">📅 預約</span>
                         {% else %}
                             <span class="badge-type-immediate">⚡ 即時</span>
                         {% endif %}
-                    </td>
-                    <td><b>{{ o.table }} 號桌</b></td>
-                    <td><b>{{ o.phone_last4 }}</b></td>
-                    <td>
-                        {% if o.status == 'ready' %}
-                            <span style="color: #ff922b; font-weight: bold;">🔔 已通知取餐</span>
-                        {% else %}
-                            <span style="color: #e63946; font-weight: bold;">{{ o.est_time }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <ul style="margin: 0; padding-left: 15px;">
-                            {% for item in o.food_list %}
-                            <li>{{ item.name }} x {{ item.quantity }}</li>
-                            {% endfor %}
-                        </ul>
-                    </td>
-                    <td>${{ o.total }}</td>
-                    <td>
+                        <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
+                    </div>
+                    <div class="order-card-title">末四碼: {{ o.phone_last4 }}</div>
+                </div>
+                <div class="order-card-body">
+                    <div style="font-size: 14px; font-weight: bold; color: #e63946;">
+                        狀態: {% if o.status == 'ready' %}🔔 已通知取餐{% else %}{{ o.est_time }}{% endif %}
+                    </div>
+                    <ul style="padding-left: 18px; margin: 5px 0;">
+                        {% for item in o.food_list %}
+                            <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                    <div style="text-align: right; font-size: 15px; font-weight: bold;">金額: ${{ o.total }}</div>
+                    <div style="display: flex; gap: 6px; margin-top: 8px;">
                         {% if o.status != 'ready' %}
-                            <button class="btn-warning" onclick="readyOrder('{{ o.id }}')">📢 製作完成 (通知取餐)</button>
+                            <button class="btn-warning" style="flex: 1; padding: 10px 0;" onclick="readyOrder('{{ o.id }}')">📢 製作完成 (通知)</button>
                         {% endif %}
-                        <button class="btn-primary" onclick="completeOrder('{{ o.id }}')">完成取餐 (結案)</button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="7" style="text-align: center; color: #777;">目前沒有製作中的訂單</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- 已完成訂單 -->
-        <h3 style="margin-top: 30px;">✅ 已完成訂單紀錄</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>類型</th>
-                    <th>桌號</th>
-                    <th>電話末四碼</th>
-                    <th>餐點內容與規格</th>
-                    <th>總金額</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for o in completed_orders %}
-                <tr>
-                    <td>
-                        {% if o.order_type == '預約單' %}
-                            <span class="badge-type-booking">📅 預約</span>
-                        {% else %}
-                            <span class="badge-type-immediate">⚡ 即時</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ o.table }} 號桌</td>
-                    <td><b>{{ o.phone_last4 }}</b></td>
-                    <td>
-                        <ul style="margin: 0; padding-left: 15px;">
-                            {% for item in o.food_list %}
-                            <li>{{ item.name }} x {{ item.quantity }}</li>
-                            {% endfor %}
-                        </ul>
-                    </td>
-                    <td style="font-weight: bold;">${{ o.total }}</td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5" style="text-align: center; color: #777;">目前尚無已完成訂單</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        <button class="btn-primary" style="flex: 1; padding: 10px 0;" onclick="completeOrder('{{ o.id }}')">結案 (完成)</button>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div style="text-align: center; color: #777; padding: 15px;">目前沒有製作中的訂單</div>
+        {% endfor %}
     </div>
 
-    <!-- 營業時間與打烊控制 -->
+    <!-- 營業時間設定 -->
     <div class="card">
-        <h2>⏰ 營業時間與打烊控制</h2>
-        <div style="margin-bottom: 15px; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
-            <label style="font-weight: bold; color: #856404; cursor: pointer;">
+        <h2 style="font-size: 18px; margin-bottom: 10px;">⏰ 營業時間與暫停接單</h2>
+        <div style="margin-bottom: 12px; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
+            <label style="font-weight: bold; color: #856404; font-size: 14px; cursor: pointer;">
                 <input type="checkbox" id="force-close-chk" {% if hours.force_close %}checked{% endif %} onchange="toggleForceClose()">
-                🔴 【手動強制打烊 / 暫停接單】（勾選後顧客點餐頁面將立即顯示休息中）
+                🔴 強制暫停接單 (顯示休息中)
             </label>
         </div>
         
         <form id="hours-form" onsubmit="saveHours(event)">
-            {% for day, label in [('Mon', '星期一'), ('Tue', '星期二'), ('Wed', '星期三'), ('Thu', '星期四'), ('Fri', '星期五'), ('Sat', '星期六'), ('Sun', '星期日')] %}
+            {% for day, label in [('Mon', '週一'), ('Tue', '週二'), ('Wed', '週三'), ('Thu', '週四'), ('Fri', '週五'), ('Sat', '週六'), ('Sun', '週日')] %}
             <div class="hours-row">
                 <label>{{ label }}</label>
                 <input type="checkbox" id="{{ day }}_en" {% if hours.get(day, {}).get('enabled') %}checked{% endif %}> 營業
-                <input type="time" id="{{ day }}_open" value="{{ hours.get(day, {}).get('open', '11:30') }}"> 至
+                <input type="time" id="{{ day }}_open" value="{{ hours.get(day, {}).get('open', '11:30') }}"> -
                 <input type="time" id="{{ day }}_close" value="{{ hours.get(day, {}).get('close', '20:00') }}">
             </div>
             {% endfor %}
-            <button type="submit" class="btn-success" style="margin-top: 10px;">儲存營業時間設定</button>
+            <button type="submit" class="btn-success" style="width: 100%; margin-top: 10px; padding: 10px;">儲存營業時間設定</button>
         </form>
     </div>
 
-    <!-- 優惠專區管理 -->
+    <!-- 優惠專區與品項管理 -->
     <div class="card" style="background: #fff9db; border: 1px solid #fcc419;">
-        <h2>🔥 優惠專區管理</h2>
-        <form onsubmit="addPromoItem(event)" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
-            <input type="text" id="promo-name" placeholder="優惠名稱 (例如: 雙人炸雞特餐)" required style="padding: 8px; flex: 2; border: 1px solid #ccc; border-radius: 4px;">
-            <input type="number" id="promo-price" placeholder="金額 ($)" required style="padding: 8px; flex: 1; border: 1px solid #ccc; border-radius: 4px;">
-            <button type="submit" style="background: #f59f00; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer;">新增至優惠專區</button>
+        <h2 style="font-size: 18px; margin-bottom: 10px;">🔥 優惠專區管理</h2>
+        <form onsubmit="addPromoItem(event)" style="display: flex; gap: 8px; flex-direction: column; margin-bottom: 12px;">
+            <input type="text" id="promo-name" placeholder="優惠名稱 (例: 雙人套餐)" required style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+            <input type="number" id="promo-price" placeholder="金額 ($)" required style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
+            <button type="submit" style="background: #f59f00; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">新增至優惠專區</button>
         </form>
         
-        <b>現有優惠品項：</b>
-        <ul id="promo-list" style="margin: 5px 0; padding-left: 20px;">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">現有優惠品項：</div>
+        <ul id="promo-list" style="margin: 0; padding-left: 20px; font-size: 14px;">
             {% for id, item in menu.items() %}
                 {% if item.get('category') == 'promo' %}
-                    <li style="margin-bottom: 5px;">
+                    <li style="margin-bottom: 6px;">
                         {{ item.name }} - ${{ item.price }} 
-                        <button onclick="deletePromo('{{ id }}')" class="btn-danger" style="padding: 2px 8px; font-size: 12px; margin-left: 10px;">刪除</button>
+                        <button onclick="deletePromo('{{ id }}')" class="btn-danger" style="padding: 2px 8px; font-size: 12px; margin-left: 8px;">刪除</button>
                     </li>
                 {% endif %}
             {% endfor %}
         </ul>
     </div>
 
-    <!-- 菜單品項售罄管理 -->
+    <!-- 品項售罄管理 -->
     <div class="card">
         <details>
-            <summary>🍔 菜單品項售罄管理（點擊展開 / 收合）</summary>
+            <summary style="font-weight: bold; font-size: 16px; cursor: pointer;">🍔 菜單品項售罄管理（點擊展開）</summary>
             <table>
                 <thead>
                     <tr>
                         <th>品名</th>
-                        <th>價格</th>
-                        <th>目前狀態</th>
+                        <th>狀態</th>
                         <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for id, item in menu.items() %}
                     <tr>
-                        <td>{{ item.name }}</td>
-                        <td>${{ item.price }}</td>
+                        <td><b>{{ item.name }}</b> (${{ item.price }})</td>
                         <td>
                             {% if item.is_sold_out %}
-                                <span style="color: #d90429; font-weight: bold;">已售罄</span>
+                                <span style="color: #d90429; font-weight: bold;">售罄</span>
                             {% else %}
-                                <span style="color: #2b9348; font-weight: bold;">供應中</span>
+                                <span style="color: #2b9348; font-weight: bold;">正常</span>
                             {% endif %}
                         </td>
                         <td>
-                            <button onclick="toggleSoldOut('{{ id }}')" class="btn-primary" style="padding: 4px 8px; font-size: 12px;">切換狀態</button>
+                            <button onclick="toggleSoldOut('{{ id }}')" class="btn-primary" style="padding: 4px 8px; font-size: 12px;">切換</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -338,7 +273,7 @@
         hoursData.force_close = isChecked;
         let res = await fetch('/api/hours/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hoursData) });
         let data = await res.json();
-        if (data.success) alert(isChecked ? '已切換為強制打烊狀態！' : '已恢復營業狀態！');
+        if (data.success) alert(isChecked ? '已切換為暫停接單狀態！' : '已恢復正常接單狀態！');
     }
 
     function gatherHoursData() {
