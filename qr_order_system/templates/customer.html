@@ -144,7 +144,7 @@
                 <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
             </div>
             
-            <!-- 兩個階段按鈕 -->
+            <!-- 階段按鈕：先顯示「了解，過去取餐」，點擊後該按鈕消失並顯示「取餐完成」 -->
             <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
             <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
         </div>
@@ -595,10 +595,10 @@
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已完成，請至櫃檯憑電話後四碼取餐！';
                         if(cancelBtn) cancelBtn.style.display = 'none';
-                        document.getElementById('acknowledge-btn').style.display = 'block';
-                        document.getElementById('finish-order-btn').style.display = 'block';
-
+                        // 訂單完成時，一開始只顯示「了解，過去取餐」
                         if (!isCompletedAlertTriggered) {
+                            document.getElementById('acknowledge-btn').style.display = 'block';
+                            document.getElementById('finish-order-btn').style.display = 'none';
                             isCompletedAlertTriggered = true;
                             alertAudio.play().catch(err => {});
                         }
@@ -611,14 +611,15 @@
         }, 3000);
     }
 
-    // 按下「了解，過去取餐」按鈕：只停止音效，保留明細與狀態畫面
+    // 按下「了解，過去取餐」：關閉音效，該按鈕消失，接著顯示「取餐完成」按鈕
     function acknowledgeOrder() {
         alertAudio.pause();
         alertAudio.currentTime = 0;
         document.getElementById('acknowledge-btn').style.display = 'none';
+        document.getElementById('finish-order-btn').style.display = 'block';
     }
 
-    // 按下「取餐完成」按鈕：清空購物車，跳回點餐頁面
+    // 按下「取餐完成」：清空購物車並跳回點餐頁面
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
