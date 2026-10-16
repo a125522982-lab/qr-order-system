@@ -135,7 +135,6 @@
             </label>
         </div>
 
-        <!-- 重新依指定順序安排分類頁籤 -->
         <div class="category-tabs">
             <button class="tab-btn active" onclick="filterMenu('combo', this)">超值套餐</button>
             <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
@@ -337,7 +336,6 @@
             document.getElementById('order-view').style.display = 'none';
         } else {
             generateBookingTimes();
-            // 預設分類篩選為「超值套餐」
             const firstTab = document.querySelector('.category-tabs .tab-btn');
             if (firstTab) filterMenu('combo', firstTab);
         }
@@ -636,6 +634,14 @@
                 let allOrders = data.orders || [];
                 let ongoingOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted' || o.status === 'ready' || o.status === 'acknowledged');
 
+                // 檢查是否有任一筆訂單正處於 ready 狀態
+                let hasReadyOrder = ongoingOrders.some(o => o.status === 'ready');
+                if (!hasReadyOrder) {
+                    // 若沒有任何進行中且已完成的訂單，確保音效關閉
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
+                }
+
                 if (ongoingOrders.length > 0) {
                     document.getElementById('order-view').style.display = 'none';
                     document.getElementById('history-view').style.display = 'none';
@@ -709,8 +715,12 @@
                     });
 
                 } else if (allOrders.length > 0) {
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
                     renderHistoryList(allOrders, activePhone4);
                 } else {
+                    alertAudio.pause();
+                    alertAudio.currentTime = 0;
                     alert('找不到該末四碼對應的訂單紀錄');
                     clearInterval(statusInterval);
                 }
@@ -766,6 +776,8 @@
 
     function backToMenuOnly() {
         if (statusInterval) clearInterval(statusInterval);
+        alertAudio.pause();
+        alertAudio.currentTime = 0;
         document.getElementById('history-view').style.display = 'none';
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
