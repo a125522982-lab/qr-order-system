@@ -247,21 +247,21 @@
     </div>
 </div>
 
-<!-- 新訂單音效提醒（設定為 loop 循環播放，直到接單才停止） -->
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
+<!-- 後台新訂單提醒音效（正確讀取 alert.mp3 並持續循環直到接單） -->
+<audio id="admin-alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
     let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 如果打開頁面時本身就有待處理訂單，自動持續響鈴
+    // 頁面載入時若已有待處理訂單則自動播放
     window.addEventListener('load', () => {
         if (lastPendingCount > 0) {
             playAlertSound();
         }
     });
 
-    // 隨意點擊一次解除瀏覽器禁音限制
+    // 點擊頁面任意處解除瀏覽器自動播放限制
     document.addEventListener('click', () => {
         if (lastPendingCount > 0 && adminAlertAudio.paused) {
             playAlertSound();
@@ -280,14 +280,13 @@
         adminAlertAudio.currentTime = 0;
     }
 
-    // 每 3 秒檢查一次是否有新訂單
+    // 每 3 秒自動輪詢檢查新訂單
     setInterval(async () => {
         if (document.activeElement.tagName === "INPUT") return;
         try {
             let res = await fetch('/api/admin/check_orders');
             let data = await res.json();
             
-            // 有新訂單近來
             if (data.pending_count > lastPendingCount) {
                 playAlertSound();
                 setTimeout(() => {
@@ -384,7 +383,6 @@
     }
 
     async function acceptOrder(orderId) {
-        // 點擊接受訂單時，立即關閉聲音
         stopAlertSound();
 
         let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
