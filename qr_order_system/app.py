@@ -2,7 +2,7 @@ import json
 import os
 import socket
 import time
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -230,7 +230,10 @@ def place_order():
 
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000"))
-        now_str = datetime.now().strftime("%m/%d %H:%M")
+        
+        # 強制設定為台灣時間 (UTC+8)
+        taiwan_timezone = timezone(timedelta(hours=8))
+        now_str = datetime.now(taiwan_timezone).strftime("%m/%d %H:%M")
         
         new_order = {
             "id": order_id,
@@ -263,7 +266,6 @@ def check_order_status():
     if phone_last4:
         matched = [o for o in all_orders if str(o.get("phone_last4")) == str(phone_last4)]
         if matched:
-            # 最新排最前面
             matched_sorted = sorted(matched, key=lambda x: str(x.get("id", "")), reverse=True)
             return jsonify({"success": True, "orders": matched_sorted, "order": matched_sorted[0]})
                 
