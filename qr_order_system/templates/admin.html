@@ -247,36 +247,56 @@
     </div>
 </div>
 
-<!-- 新訂單音效提醒（單次播放，不循環） -->
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
+<!-- 新訂單音效提醒（設定為 loop 循環播放，直到接單才停止） -->
+<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
     let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 頁面載入後解鎖音效權限
+    // 如果打開頁面時本身就有待處理訂單，自動持續響鈴
+    window.addEventListener('load', () => {
+        if (lastPendingCount > 0) {
+            playAlertSound();
+        }
+    });
+
+    // 隨意點擊一次解除瀏覽器禁音限制
     document.addEventListener('click', () => {
-        if (adminAlertAudio.paused) {
-            adminAlertAudio.load();
+        if (lastPendingCount > 0 && adminAlertAudio.paused) {
+            playAlertSound();
         }
     }, { once: true });
 
-    // 自動輪詢：每 3 秒檢查一次新訂單
+    function playAlertSound() {
+        adminAlertAudio.currentTime = 0;
+        adminAlertAudio.play().catch(err => {
+            console.log("等待使用者互動後才能自動播放聲音");
+        });
+    }
+
+    function stopAlertSound() {
+        adminAlertAudio.pause();
+        adminAlertAudio.currentTime = 0;
+    }
+
+    // 每 3 秒檢查一次是否有新訂單
     setInterval(async () => {
         if (document.activeElement.tagName === "INPUT") return;
         try {
             let res = await fetch('/api/admin/check_orders');
             let data = await res.json();
+            
+            // 有新訂單近來
             if (data.pending_count > lastPendingCount) {
-                // 播放一次提示音
-                adminAlertAudio.currentTime = 0;
-                adminAlertAudio.play().catch(err => {});
+                playAlertSound();
                 setTimeout(() => {
                     location.reload();
                 }, 1000);
-            } else if (data.pending_count < lastPendingCount) {
-                lastPendingCount = data.pending_count;
+            } else if (data.pending_count === 0) {
+                stopAlertSound();
             }
+            lastPendingCount = data.pending_count;
         } catch(e) {}
     }, 3000);
 
@@ -364,9 +384,8 @@
     }
 
     async function acceptOrder(orderId) {
-        // 接受訂單時立即停止提示音
-        adminAlertAudio.pause();
-        adminAlertAudio.currentTime = 0;
+        // 點擊接受訂單時，立即關閉聲音
+        stopAlertSound();
 
         let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
         if (!estTime) return;
@@ -392,8 +411,7 @@
     }
 
     async function cancelOrder(orderId) {
-        adminAlertAudio.pause();
-        adminAlertAudio.currentTime = 0;
+        stopAlertSound();
 
         if (!confirm('確定取消此訂單？')) return;
         let res = await fetch('/api/order/cancel', {
