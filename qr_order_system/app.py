@@ -246,7 +246,7 @@ def place_order():
             "order_type": order_type,
             "booking_time": booking_time,
             "est_time": est_time_display,
-            "target_timestamp": 0, # 用於即時單倒數計時
+            "target_timestamp": 0,
             "created_at": now_str
         }
 
@@ -270,7 +270,7 @@ def check_order_status():
         matched = [o for o in all_orders if str(o.get("phone_last4")) == str(phone_last4)]
         if matched:
             matched_sorted = sorted(matched, key=lambda x: str(x.get("id", "")), reverse=True)
-            return jsonify({"success": True, "orders": matched_sorted, "order": matched_sorted[0]})
+            return jsonify({"success": True, "orders": matched_sorted})
                 
     return jsonify({"success": False}), 404
 
@@ -278,7 +278,7 @@ def check_order_status():
 def accept_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
-    est_minutes = int(data.get("est_minutes", 15)) # 預設15分鐘
+    est_minutes = int(data.get("est_minutes", 15))
     
     for i, order in enumerate(ORDERS):
         if str(order.get("id")) == target_id:
@@ -286,12 +286,10 @@ def accept_order():
             found["status"] = "accepted"
             
             if found["order_type"] == "即時單":
-                # 計算倒數計時結束的絕對時間戳記 (現在時間 + 分鐘數)
                 target_ts = time.time() + (est_minutes * 60)
                 found["target_timestamp"] = target_ts
                 found["est_time"] = f"{est_minutes}分鐘"
             else:
-                # 預約單維持原本預約時間
                 found["est_time"] = f"預約 {found['booking_time']} 取餐"
             
             ACCEPTED_ORDERS.append(found)
