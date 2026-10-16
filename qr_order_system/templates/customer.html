@@ -75,7 +75,7 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 【更新】正確營業時間、電話與 Google 地圖導航連結 -->
+    <!-- 店家資訊卡片 -->
     <div class="store-info-card">
         <div class="store-info-title">
             <i class="bi bi-shop"></i> 酷嗑斯美式炸雞 - 店家資訊
@@ -293,27 +293,17 @@
         if (hoursData && hoursData.force_close) return false;
         
         const now = new Date();
-        const day = now.getDay(); // 0: 週日, 1: 週一, ..., 6: 週六
+        const day = now.getDay();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-        // 週一 (1) 與 週二 (2) 公休
-        if (day === 1 || day === 2) {
-            return false;
-        }
+        if (day === 1 || day === 2) return false;
 
-        let openMinutes = 11 * 60 + 30; // 11:30
+        let openMinutes = 11 * 60 + 30;
         let closeMinutes = 0;
 
-        if (day === 3 || day === 4) {
-            // 週三、週四: 11:30 - 19:30
-            closeMinutes = 19 * 60 + 30;
-        } else if (day === 5 || day === 6) {
-            // 週五、週六: 11:30 - 21:30
-            closeMinutes = 21 * 60 + 30;
-        } else if (day === 0) {
-            // 週日: 11:30 - 20:00
-            closeMinutes = 20 * 60;
-        }
+        if (day === 3 || day === 4) closeMinutes = 19 * 60 + 30;
+        else if (day === 5 || day === 6) closeMinutes = 21 * 60 + 30;
+        else if (day === 0) closeMinutes = 20 * 60;
 
         return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
     }
@@ -626,7 +616,7 @@
             let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
             let data = await res.json();
             if (data.success) {
-                let ongoingOrder = (data.orders || []).find(o => o.status === 'pending' || o.status === 'accepted');
+                let ongoingOrder = (data.orders || []).find(o => o.status === 'pending' || o.status === 'accepted' || o.status === 'ready' || o.status === 'acknowledged');
                 if (ongoingOrder) {
                     loadTrackerView(ongoingOrder.id);
                 } else {
@@ -694,7 +684,7 @@
                     } else if (order.status === 'ready') {
                         statusText.innerText = "餐點已製作完成！請前往取餐";
                         cancelBtn.style.display = 'none';
-                        ackBtn.style.display = 'block';
+                        ackBtn.style.display = 'block'; // 顯示「了解，過去取餐」
                         finishBtn.style.display = 'none';
                         if (!isCompletedAlertTriggered) {
                             alertAudio.play().catch(e => console.log('音效播放受阻:', e));
@@ -704,11 +694,15 @@
                         statusText.innerText = "已知悉，正在前往取餐路上...";
                         cancelBtn.style.display = 'none';
                         ackBtn.style.display = 'none';
-                        finishBtn.style.display = 'block';
+                        finishBtn.style.display = 'block'; // 顯示「取餐完成 (返回點餐)」
                     } else if (order.status === 'completed') {
+                        // 修正：當訂單被標記為完成後，清除輪詢並安全返回點餐頁面
                         clearInterval(statusInterval);
+                        alertAudio.pause();
+                        alertAudio.currentTime = 0;
+                        document.getElementById('tracker-view').style.display = 'none';
+                        document.getElementById('order-view').style.display = 'block';
                         alert('感謝您的光臨！');
-                        location.reload();
                     }
                 }
             } catch (e) { console.error(e); }
@@ -725,7 +719,11 @@
         alertAudio.pause();
         alertAudio.currentTime = 0;
         await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
-        location.reload();
+        
+        // 點擊後直接切換回點餐畫面，不強制整個頁面重整
+        document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('order-view').style.display = 'block';
+        currentOrderId = null;
     }
 
     async function cancelMyOrder() {
