@@ -21,7 +21,6 @@
         .search-box { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
         .search-box input { padding: 8px 12px; width: 180px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
         
-        /* 預約取餐區塊樣式 */
         .booking-section { background: #e8f4f8; border: 1px solid #bbeeec; padding: 12px; border-radius: 8px; margin-bottom: 15px; font-size: 14px; }
         .booking-select { padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; background: white; margin-left: 6px; }
 
@@ -123,7 +122,6 @@
 
     <!-- 點餐主畫面 -->
     <div id="order-view">
-        <!-- 預約取餐時間選擇 -->
         <div class="booking-section">
             <i class="bi bi-calendar-check text-primary"></i> <b>取餐類型選擇：</b><br>
             <label style="margin-top: 6px; display: inline-block;">
@@ -194,7 +192,10 @@
             <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
             <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
-            <div id="track-order-type" style="font-size: 14px; font-weight: bold; color: #444; margin-bottom: 10px;"></div>
+            <div id="track-order-type" style="font-size: 14px; font-weight: bold; color: #444; margin-bottom: 5px;"></div>
+            <div id="booking-warning" class="notice-banner" style="display: none; background: #f8d7da; color: #721c24; border-color: #f5c6cb; margin-bottom: 10px;">
+                ⚠️ <b>預約單提醒：</b>如果要修改或取消訂單，請直接聯絡店家處理！
+            </div>
 
             <button id="cancel-order-btn" class="finish-btn" style="background: #d90429; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
 
@@ -308,7 +309,7 @@
     function getTodayOpenCloseMinutes() {
         const now = new Date();
         const day = now.getDay();
-        if (day === 1 || day === 2) return null; // 公休
+        if (day === 1 || day === 2) return null;
         let openM = 11 * 60 + 30;
         let closeM = (day === 3 || day === 4) ? (19 * 60 + 30) : ((day === 5 || day === 6) ? (21 * 60 + 30) : (20 * 60));
         return { openM, closeM };
@@ -323,7 +324,6 @@
         return currentMinutes >= range.openM && currentMinutes <= range.closeM;
     }
 
-    // 動態產生間隔 10 分鐘的預約選項
     function generateBookingTimes() {
         const range = getTodayOpenCloseMinutes();
         const selectEl = document.getElementById('booking-time-select');
@@ -331,10 +331,7 @@
 
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        
-        // 從當前時間往後取整到下一個10分鐘，或從營業開始時間起算
         let startTime = Math.max(range.openM, currentMinutes + 15);
-        // 對齊10分鐘倍數
         startTime = Math.ceil(startTime / 10) * 10;
 
         let html = '<option value="">請選擇預約時間</option>';
@@ -366,6 +363,7 @@
     const tableNumber = "{{ table }}";
     let currentOrderId = null;
     let statusInterval = null;
+    let countdownInterval = null; // 即時單倒數計時器
     let isCompletedAlertTriggered = false;
     let lastKnownStatus = '';
     let isUserAcknowledged = false;
@@ -650,8 +648,11 @@
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
                 
-                let typeBadge = order.order_type === '預約單' ? `📅 預約取餐時間：<b>${order.booking_time}</b>` : `⚡ 即時訂單 (等候店家回覆)`;
+                let typeBadge = order.order_type === '預約單' ? `📅 預約取餐時間：<b>${order.booking_time}</b>` : `⚡ 即時訂單`;
                 document.getElementById('track-order-type').innerHTML = typeBadge;
+
+                // 預約單顯示警語
+                document.getElementById('booking-warning').style.display = order.order_type === '預約單' ? 'block' : 'none';
 
                 let itemsHtml = '';
                 order.food_list.forEach(i => { itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`; });
@@ -668,6 +669,7 @@
             let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
             let data = await res.json();
             if (data.success) {
+                // 只要是未完成或未取消的訂單（包含預約單與即時單），都可以被搜尋到並帶入追蹤頁面！
                 let ongoingOrder = (data.orders || []).find(o => o.status === 'pending' || o.status === 'accepted' || o.status === 'ready' || o.status === 'acknowledged');
                 if (ongoingOrder) {
                     loadTrackerView(ongoingOrder.id);
@@ -709,6 +711,27 @@
         document.getElementById('order-view').style.display = 'block';
     }
 
+    function startCountdown(targetTimestamp) {
+        if (countdownInterval) clearInterval(countdownInterval);
+        
+        function updateTimer() {
+            let now = Date.now() / 1000;
+            let diff = Math.floor(targetTimestamp - now);
+            let statusText = document.getElementById('track-status');
+            
+            if (diff <= 0) {
+                statusText.innerText = "餐點即將製作完成或已準備好！";
+                clearInterval(countdownInterval);
+            } else {
+                let mins = Math.floor(diff / 60);
+                let secs = diff % 60;
+                statusText.innerText = `製作中，剩餘等候時間：${mins}分 ${String(secs).padStart(2, '0')}秒`;
+            }
+        }
+        updateTimer();
+        countdownInterval = setInterval(updateTimer, 1000);
+    }
+
     function startStatusPolling() {
         if (statusInterval) clearInterval(statusInterval);
         statusInterval = setInterval(async () => {
@@ -725,20 +748,28 @@
 
                     if (isUserAcknowledged) return;
 
-                    if (order.status !== lastKnownStatus) {
+                    if (order.status !== lastKnownStatus || order.status === 'accepted') {
                         lastKnownStatus = order.status;
 
                         if (order.status === 'pending') {
+                            if (countdownInterval) clearInterval(countdownInterval);
                             statusText.innerText = order.order_type === '預約單' ? `預約 ${order.booking_time} 取餐 (等待店家接單)` : "等待店家接受訂單...";
                             cancelBtn.style.display = 'block';
                             ackBtn.style.display = 'none';
                             finishBtn.style.display = 'none';
                         } else if (order.status === 'accepted') {
-                            statusText.innerText = order.est_time; // 顯示店家回報的時間或預約時間
                             cancelBtn.style.display = 'none';
                             ackBtn.style.display = 'none';
                             finishBtn.style.display = 'none';
+                            
+                            if (order.order_type === '即時單' && order.target_timestamp > 0) {
+                                // 啟動動態倒數計時
+                                startCountdown(order.target_timestamp);
+                            } else {
+                                statusText.innerText = order.est_time;
+                            }
                         } else if (order.status === 'ready') {
+                            if (countdownInterval) clearInterval(countdownInterval);
                             statusText.innerText = "餐點已製作完成！請前往取餐";
                             cancelBtn.style.display = 'none';
                             ackBtn.style.display = 'block';
@@ -748,11 +779,13 @@
                                 isCompletedAlertTriggered = true;
                             }
                         } else if (order.status === 'acknowledged') {
+                            if (countdownInterval) clearInterval(countdownInterval);
                             statusText.innerText = "已知悉，正在前往取餐路上...";
                             cancelBtn.style.display = 'none';
                             ackBtn.style.display = 'none';
                             finishBtn.style.display = 'block';
                         } else if (order.status === 'completed') {
+                            if (countdownInterval) clearInterval(countdownInterval);
                             clearInterval(statusInterval);
                             alertAudio.pause();
                             alertAudio.currentTime = 0;
@@ -771,10 +804,9 @@
 
     async function acknowledgeOrder() {
         if (!currentOrderId) return;
-        
-        // 點擊後立刻關閉音效與停止重複播放
         alertAudio.pause();
         alertAudio.currentTime = 0;
+        if (countdownInterval) clearInterval(countdownInterval);
 
         isUserAcknowledged = true;
         lastKnownStatus = 'acknowledged';
@@ -794,6 +826,8 @@
         if (!currentOrderId) return;
         alertAudio.pause();
         alertAudio.currentTime = 0;
+        if (countdownInterval) clearInterval(countdownInterval);
+
         await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
         
         document.getElementById('tracker-view').style.display = 'none';
