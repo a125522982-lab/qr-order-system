@@ -55,6 +55,8 @@
         .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
         .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
         .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 25px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; display: none; }
+        
+        .history-card { background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 12px; text-align: left; }
     </style>
 </head>
 <body>
@@ -66,7 +68,7 @@
 
     <!-- 查詢或追蹤區塊 -->
     <div class="search-section">
-        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單 / 歷史訂單狀態</span>
+        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單 / 歷史訂單紀錄</span>
         <div class="search-box">
             <input type="tel" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
             <button onclick="searchMyOrder()" style="background: #17a2b8; padding: 6px 14px;">查詢</button>
@@ -128,9 +130,9 @@
         </div>
     </div>
 
-    <!-- 追蹤 / 歷史檢視區塊 -->
+    <!-- 追蹤區塊 (進行中訂單) -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
-        <h2>📋 訂單狀態追蹤</h2>
+        <h2>📋 當前訂單狀態追蹤</h2>
         <div class="tracker-card">
             <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
             <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
@@ -149,8 +151,14 @@
             <!-- 階段按鈕 -->
             <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
             <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
-            <button id="back-to-menu-btn" class="finish-btn" style="display: none; background: #6c757d;" onclick="backToMenuOnly()">返回點餐頁面</button>
         </div>
+    </div>
+
+    <!-- 歷史訂單紀錄區塊 (多筆清單) -->
+    <div id="history-view" style="display: none;" class="tracker-section">
+        <h2>📜 歷史訂單紀錄 (電話末四碼: <span id="history-phone4"></span>)</h2>
+        <div id="history-list-container"></div>
+        <button class="finish-btn" style="background: #6c757d; margin-top: 10px;" onclick="backToMenuOnly()">返回點餐頁面</button>
     </div>
 </div>
 
@@ -548,10 +556,11 @@
             if (data.success) {
                 let order = data.order;
                 document.getElementById('order-view').style.display = 'none';
+                document.getElementById('history-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
+
                 document.getElementById('acknowledge-btn').style.display = 'none';
                 document.getElementById('finish-order-btn').style.display = 'none';
-                document.getElementById('back-to-menu-btn').style.display = 'none';
 
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
@@ -559,14 +568,7 @@
                 let itemsHtml = '';
                 order.food_list.forEach(i => { itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`; });
                 document.getElementById('track-items').innerHTML = itemsHtml;
-                
-                if (order.status !== 'completed') {
-                    startStatusPolling();
-                } else {
-                    // 若是查詢歷史已完成訂單
-                    document.getElementById('track-status').innerText = '✅ 狀態：此筆訂單已完成取餐';
-                    document.getElementById('back-to-menu-btn').style.display = 'block';
-                }
+                startStatusPolling();
             }
         } catch (e) { alert('找不到該訂單'); }
     }
@@ -578,9 +580,48 @@
             let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
             let data = await res.json();
             if (data.success) {
-                loadTrackerView(data.order.id);
+                // 如果有進行中的訂單，優先進入實時追蹤畫面
+                let ongoingOrder = (data.orders || []).find(o => o.status === 'pending' || o.status === 'accepted');
+                if (ongoingOrder) {
+                    loadTrackerView(ongoingOrder.id);
+                } else {
+                    // 如果全是已完成或已取消，顯示多筆歷史紀錄清單
+                    renderHistoryList(data.orders || [data.order], phone4);
+                }
             } else { alert('找不到該末四碼對應的訂單紀錄'); }
         } catch (e) { alert('查詢發生錯誤'); }
+    }
+
+    function renderHistoryList(ordersList, phone4) {
+        document.getElementById('order-view').style.display = 'none';
+        document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('history-view').style.display = 'block';
+        document.getElementById('history-phone4').innerText = phone4;
+
+        let container = document.getElementById('history-list-container');
+        let html = '';
+
+        ordersList.forEach(o => {
+            let itemsHtml = '';
+            o.food_list.forEach(i => {
+                itemsHtml += `<li style="margin-bottom: 3px;"><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`;
+            });
+
+            html += `
+                <div class="history-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 14px; color: #666; font-weight: bold;">🕒 下單時間：${o.created_at || '今日'}</span>
+                        <span style="font-size: 14px; color: #28a745; font-weight: bold;">${o.status === 'completed' ? '已完成' : (o.status === 'cancelled' ? '已取消' : '處理中')}</span>
+                    </div>
+                    <div style="font-size: 15px;">
+                        <ul style="padding-left: 20px; margin: 5px 0;">${itemsHtml}</ul>
+                        <div style="text-align: right; font-size: 16px; margin-top: 8px; color: #d90429;"><b>總金額：$${o.total}</b></div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
     }
 
     function startStatusPolling() {
@@ -622,7 +663,6 @@
         }, 3000);
     }
 
-    // 按下「了解，過去取餐」：關閉音效，該按鈕消失，接著顯示「取餐完成」按鈕
     function acknowledgeOrder() {
         alertAudio.pause();
         alertAudio.currentTime = 0;
@@ -630,7 +670,6 @@
         document.getElementById('finish-order-btn').style.display = 'block';
     }
 
-    // 按下「取餐完成」：清空購物車並跳回點餐頁面
     function finishOrder() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
@@ -640,14 +679,15 @@
         currentOrderId = null;
         isCompletedAlertTriggered = false;
         document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('history-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         document.getElementById('search-phone4').value = '';
     }
 
-    // 純返回點餐頁面（用於檢視已完成歷史訂單時返回）
     function backToMenuOnly() {
         if (statusInterval) clearInterval(statusInterval);
         document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('history-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         document.getElementById('search-phone4').value = '';
     }
