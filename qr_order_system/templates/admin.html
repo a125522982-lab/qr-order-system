@@ -17,7 +17,7 @@
         .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 12px; border-radius: 8px; }
         
-        /* 手機卡片化訂單樣式 */
+        /* 行動端卡片化訂單樣式 */
         .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
         .order-card-title { font-size: 18px; font-weight: bold; color: #d90429; }
@@ -40,6 +40,8 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
         th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
         th { background: #f8f9fa; }
+
+        details summary { font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 0; outline: none; }
     </style>
 </head>
 <body>
@@ -66,7 +68,7 @@
         </div>
     </div>
 
-    <!-- 訂單管理 -->
+    <!-- 進行中訂單管理 -->
     <div class="card" style="border: 2px solid #2b9348;">
         <h2 style="font-size: 18px; margin-bottom: 10px;">📋 待處理訂單 ({{ orders | length }})</h2>
         {% for o in orders %}
@@ -149,6 +151,66 @@
         {% endfor %}
     </div>
 
+    <!-- 後台新增：適合手機瀏覽的歷史訂單紀錄區塊 -->
+    <div class="card" style="background: #ffffff;">
+        <details>
+            <summary>📜 查看歷史訂單紀錄 (已完成/取消 {{ completed_orders | length + cancelled_orders | length }} 筆)</summary>
+            
+            <div style="margin-top: 10px;">
+                <h3 style="font-size: 16px; color: #2b9348; margin-bottom: 8px;">✅ 已完成訂單</h3>
+                {% for o in completed_orders %}
+                    <div class="order-card" style="border-left: 4px solid #2b9348; background: #fafafa;">
+                        <div class="order-card-header">
+                            <div>
+                                <span style="font-size: 12px; color: #777;">{{ o.created_at }}</span> | 
+                                {% if o.order_type == '預約單' %}
+                                    <span class="badge-type-booking">📅 預約</span>
+                                {% else %}
+                                    <span class="badge-type-immediate">⚡ 即時</span>
+                                {% endif %}
+                                <b>{{ o.table }} 號桌</b>
+                            </div>
+                            <div style="font-weight: bold; color: #333;">末四碼: {{ o.phone_last4 }}</div>
+                        </div>
+                        <div class="order-card-body">
+                            <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px;">
+                                {% for item in o.food_list %}
+                                    <li>{{ item.name }} x {{ item.quantity }}</li>
+                                {% endfor %}
+                            </ul>
+                            <div style="text-align: right; font-weight: bold; color: #2b9348; font-size: 15px;">總金額: ${{ o.total }}</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="text-align: center; color: #888; font-size: 13px; margin-bottom: 10px;">尚無已完成訂單</div>
+                {% endfor %}
+
+                <h3 style="font-size: 16px; color: #d90429; margin-top: 15px; margin-bottom: 8px;">❌ 已取消訂單</h3>
+                {% for o in cancelled_orders %}
+                    <div class="order-card" style="border-left: 4px solid #d90429; background: #fafafa;">
+                        <div class="order-card-header">
+                            <div>
+                                <span style="font-size: 12px; color: #777;">{{ o.created_at }}</span> | 
+                                <b>{{ o.table }} 號桌</b>
+                            </div>
+                            <div style="font-weight: bold; color: #777;">末四碼: {{ o.phone_last4 }}</div>
+                        </div>
+                        <div class="order-card-body">
+                            <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px; color: #777;">
+                                {% for item in o.food_list %}
+                                    <li>{{ item.name }} x {{ item.quantity }}</li>
+                                {% endfor %}
+                            </ul>
+                            <div style="text-align: right; font-weight: bold; color: #777; font-size: 14px;">金額: ${{ o.total }} (已取消)</div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="text-align: center; color: #888; font-size: 13px;">尚無取消訂單</div>
+                {% endfor %}
+            </div>
+        </details>
+    </div>
+
     <!-- 營業時間設定 -->
     <div class="card">
         <h2 style="font-size: 18px; margin-bottom: 10px;">⏰ 營業時間與暫停接單</h2>
@@ -197,7 +259,7 @@
     <!-- 品項售罄管理 -->
     <div class="card">
         <details>
-            <summary style="font-weight: bold; font-size: 16px; cursor: pointer;">🍔 菜單品項售罄管理（點擊展開）</summary>
+            <summary>🍔 菜單品項售罄管理（點擊展開）</summary>
             <table>
                 <thead>
                     <tr>
