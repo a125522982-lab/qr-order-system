@@ -74,7 +74,7 @@
                     <th>電話末四碼</th>
                     <th>餐點內容與規格</th>
                     <th>總金額</th>
-                    <th>操作 (即時單可選擇回報等候時間)</th>
+                    <th>操作</th>
                 </tr>
             </thead>
             <tbody>
@@ -99,15 +99,15 @@
                     <td style="color: #d90429; font-weight: bold;">${{ o.total }}</td>
                     <td>
                         {% if o.order_type == '預約單' %}
-                            <button class="btn-success" onclick="acceptOrder('{{ o.id }}', '預約 {{ o.booking_time }} 取餐')">接受預約單</button>
+                            <button class="btn-success" onclick="acceptOrder('{{ o.id }}', 0)">接受預約單</button>
                         {% else %}
                             <div style="font-size: 13px; margin-bottom: 4px; font-weight: bold;">回報等候時間：</div>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '5分鐘')">5分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '10分鐘')">10分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '15分鐘')">15分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '20分鐘')">20分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '25分鐘')">25分</button>
-                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '30分鐘')">30分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 5)">5分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 10)">10分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 15)">15分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 20)">20分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 25)">25分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', 30)">30分</button>
                         {% endif %}
                         <button class="btn-danger" onclick="cancelOrder('{{ o.id }}')">取消</button>
                     </td>
