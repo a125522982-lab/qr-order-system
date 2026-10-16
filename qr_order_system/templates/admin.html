@@ -247,27 +247,29 @@
     </div>
 </div>
 
-<!-- 新訂單音效提醒 -->
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
+<!-- 新訂單音效提醒（單次播放，不循環） -->
+<audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" preload="auto"></audio>
 
 <script>
     let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 頁面載入後，只要使用者在頁面上點擊任何地方，就自動解鎖音效權限
+    // 頁面載入後解鎖音效權限
     document.addEventListener('click', () => {
         if (adminAlertAudio.paused) {
             adminAlertAudio.load();
         }
     }, { once: true });
 
-    // 自動輪詢：每 3 秒檢查一次新訂單，有新訂單自動播放提示音並重新整理
+    // 自動輪詢：每 3 秒檢查一次新訂單
     setInterval(async () => {
         if (document.activeElement.tagName === "INPUT") return;
         try {
             let res = await fetch('/api/admin/check_orders');
             let data = await res.json();
             if (data.pending_count > lastPendingCount) {
+                // 播放一次提示音
+                adminAlertAudio.currentTime = 0;
                 adminAlertAudio.play().catch(err => {});
                 setTimeout(() => {
                     location.reload();
@@ -362,6 +364,10 @@
     }
 
     async function acceptOrder(orderId) {
+        // 接受訂單時立即停止提示音
+        adminAlertAudio.pause();
+        adminAlertAudio.currentTime = 0;
+
         let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
         if (!estTime) return;
         let res = await fetch('/api/order/accept', {
@@ -386,6 +392,9 @@
     }
 
     async function cancelOrder(orderId) {
+        adminAlertAudio.pause();
+        adminAlertAudio.currentTime = 0;
+
         if (!confirm('確定取消此訂單？')) return;
         let res = await fetch('/api/order/cancel', {
             method: 'POST',
