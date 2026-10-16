@@ -154,9 +154,7 @@ def admin_page():
 
 @app.route("/api/admin/check_orders", methods=["GET"])
 def api_check_orders():
-    return jsonify({
-        "pending_count": len(ORDERS)
-    })
+    return jsonify({"pending_count": len(ORDERS)})
 
 @app.route("/api/hours/save", methods=["POST"])
 def update_hours():
@@ -192,7 +190,6 @@ def add_promo_item():
 
         menu = load_menu()
         promo_id = "promo_" + str(int(time.time()))
-        
         menu[promo_id] = {
             "name": data["name"],
             "price": int(data["price"]),
@@ -230,10 +227,14 @@ def place_order():
 
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000"))
+        booking_time = data.get("booking_time", "").strip() # 預約時間 (若為空則是即時訂單)
         
         taiwan_timezone = timezone(timedelta(hours=8))
         now_str = datetime.now(taiwan_timezone).strftime("%m/%d %H:%M")
         
+        order_type = "預約單" if booking_time else "即時單"
+        est_time_display = f"預約 {booking_time} 取餐" if booking_time else "等待店家確認等候時間..."
+
         new_order = {
             "id": order_id,
             "table": str(data.get("table", "1")),
@@ -242,7 +243,9 @@ def place_order():
             "food_list": data.get("items", []),
             "total": int(data.get("total", 0)),
             "status": "pending",
-            "est_time": "",
+            "order_type": order_type,
+            "booking_time": booking_time,
+            "est_time": est_time_display,
             "created_at": now_str
         }
 
@@ -274,20 +277,26 @@ def check_order_status():
 def accept_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
-    est_time = str(data.get("est_time", "15分鐘"))
+    est_minutes = data.get("est_minutes", "") # 即時單回報的分鐘數 (例: "15分鐘")
     
     for i, order in enumerate(ORDERS):
         if str(order.get("id")) == target_id:
             found = ORDERS.pop(i)
             found["status"] = "accepted"
-            found["est_time"] = est_time
+            
+            # 若是預約單，保留原本的預約時間；若是即時單，套用店家回報的分鐘數
+            if found["order_type"] == "即時單" and est_minutes:
+                found["est_time"] = f"約需等待 {est_minutes}"
+            
             ACCEPTED_ORDERS.append(found)
             
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(2)
                 s.connect((PRINTER_IP, PRINTER_PORT))
-                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n時間: {found.get('created_at','')}\n".encode("big5", errors="ignore")
+                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞 [{found['order_type']}]\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n時間: {found.get('created_at','')}\n".encode("big5", errors="ignore")
+                if found['booking_time']:
+                    print_data += f"預約取餐: {found['booking_time']}\n".encode("big5", errors="ignore")
                 for item in found['food_list']:
                     print_data += f"{item['name']} x {item['quantity']}\n".encode("big5", errors="ignore")
                 print_data += f"總計: ${found['total']}\n\n\n\x1d\x56\x42\x00".encode("big5", errors="ignore")
@@ -299,7 +308,16 @@ def accept_order():
             
     return jsonify({"success": False}), 404
 
-# 【新增】通知餐點已製作完成 (狀態轉為 ready)
+@app.route("/api/order/acknowledge", methods=["POST"])
+def acknowledge_order():
+    data = request.get_json(silent=True) or {}
+    target_id = str(data.get("order_id", ""))
+    for order in ACCEPTED_ORDERS:
+        if str(order.get("id")) == target_id:
+            order["status"] = "acknowledged"
+            return jsonify({"success": True})
+    return jsonify({"success": False}), 404
+
 @app.route("/api/order/ready", methods=["POST"])
 def ready_order():
     data = request.get_json(silent=True) or {}
