@@ -17,7 +17,7 @@
         .store-info-card { background: #fff; border: 1px solid #e9ecef; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .store-info-title { font-weight: bold; font-size: 16px; color: #e63946; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .store-info-content { font-size: 14px; color: #555; line-height: 1.6; }
-        .store-info-content div { margin-bottom: 4px; display: flex; align-items: flex-start; gap: 6px; }
+        .store-info-content div { margin-bottom: 6px; display: flex; align-items: flex-start; gap: 6px; }
 
         .search-section { background: #fff8e1; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 1px solid #ffe082; }
         .search-box { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
@@ -75,15 +75,21 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 【更新】正確 Google Map 資訊與地圖導航連結 -->
+    <!-- 【更新】正確營業時間、電話與 Google 地圖導航連結 -->
     <div class="store-info-card">
         <div class="store-info-title">
             <i class="bi bi-shop"></i> 酷嗑斯美式炸雞 - 店家資訊
         </div>
         <div class="store-info-content">
             <div>
-                <i class="bi bi-clock text-danger"></i>
-                <span><strong>營業時間：</strong>11:30–20:00（每週一公休）</span>
+                <i class="bi bi-clock text-danger mt-1"></i>
+                <div>
+                    <strong>營業時間：</strong><br>
+                    <small>• 週三、週四：11:30 – 19:30</small><br>
+                    <small>• 週五、週六：11:30 – 21:30</small><br>
+                    <small>• 週日：11:30 – 20:00</small><br>
+                    <small class="text-muted">• 週一、週二公休</small>
+                </div>
             </div>
             <div>
                 <i class="bi bi-telephone text-danger"></i>
@@ -284,26 +290,32 @@
     const hoursData = {{ hours | tojson }};
     
     function checkIsOpenNow() {
-        if (hoursData.force_close) return false;
+        if (hoursData && hoursData.force_close) return false;
+        
         const now = new Date();
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const todayKey = days[now.getDay()];
-        const todayRule = hoursData[todayKey];
-
-        if (!todayRule || !todayRule.enabled) return false;
-        if (!todayRule.open || !todayRule.close) return true;
-
+        const day = now.getDay(); // 0: 週日, 1: 週一, ..., 6: 週六
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        const openParts = todayRule.open.split(':');
-        const openMinutes = parseInt(openParts[0]) * 60 + parseInt(openParts[1]);
-        const closeParts = todayRule.close.split(':');
-        const closeMinutes = parseInt(closeParts[0]) * 60 + parseInt(closeParts[1]);
 
-        if (openMinutes <= closeMinutes) {
-            return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-        } else {
-            return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+        // 週一 (1) 與 週二 (2) 公休
+        if (day === 1 || day === 2) {
+            return false;
         }
+
+        let openMinutes = 11 * 60 + 30; // 11:30
+        let closeMinutes = 0;
+
+        if (day === 3 || day === 4) {
+            // 週三、週四: 11:30 - 19:30
+            closeMinutes = 19 * 60 + 30;
+        } else if (day === 5 || day === 6) {
+            // 週五、週六: 11:30 - 21:30
+            closeMinutes = 21 * 60 + 30;
+        } else if (day === 0) {
+            // 週日: 11:30 - 20:00
+            closeMinutes = 20 * 60;
+        }
+
+        return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
