@@ -135,15 +135,15 @@
             </label>
         </div>
 
+        <!-- 重新依指定順序安排分類頁籤 -->
         <div class="category-tabs">
-            <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
-            <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
+            <button class="tab-btn active" onclick="filterMenu('combo', this)">超值套餐</button>
+            <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
             <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
             <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
             <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
-            <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
-            <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
-            <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
+            <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
+            <button class="tab-btn" onclick="filterMenu('all', this)">全部</button>
         </div>
 
         <div class="menu-grid" id="menu-grid">
@@ -337,6 +337,9 @@
             document.getElementById('order-view').style.display = 'none';
         } else {
             generateBookingTimes();
+            // 預設分類篩選為「超值套餐」
+            const firstTab = document.querySelector('.category-tabs .tab-btn');
+            if (firstTab) filterMenu('combo', firstTab);
         }
     });
 
@@ -344,8 +347,8 @@
     const tableNumber = "{{ table }}";
     let activePhone4 = null;
     let statusInterval = null;
-    let countdownTimers = {}; // 保存多個倒數計時器
-    let userAcknowledgedMap = {}; // 保存使用者點擊過「已知悉」的訂單狀態
+    let countdownTimers = {};
+    let userAcknowledgedMap = {};
     const alertAudio = document.getElementById('customer-alert-sound');
 
     const allSidesList = [
@@ -699,7 +702,6 @@
 
                     container.innerHTML = html;
 
-                    // 重新發動倒數計時器
                     ongoingOrders.forEach(order => {
                         if (order.status === 'accepted' && order.order_type === '即時單' && order.target_timestamp > 0) {
                             startIndividualCountdown(order.id, order.target_timestamp);
