@@ -61,9 +61,9 @@
 
         .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
         .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
-        .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 20px 15px; border-radius: 10px; text-align: center; }
-        .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 15px 0; }
-        .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
+        .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 15px; }
+        .status-text { font-size: 18px; font-weight: bold; color: #386641; margin: 10px 0; }
+        .finish-btn { width: 100%; padding: 12px; background: #d90429; font-size: 16px; margin-top: 10px; border-radius: 8px; }
         .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
         .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 25px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; display: none; }
         .history-card { background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 12px; text-align: left; }
@@ -185,30 +185,11 @@
         </div>
     </div>
 
-    <!-- 追蹤區塊 -->
+    <!-- 多筆追蹤區塊容器 -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
         <h2>📋 當前訂單狀態追蹤</h2>
-        <div class="tracker-card">
-            <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
-            <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
-            <div class="status-text" id="track-status">等待店家接受訂單...</div>
-            <div id="track-order-type" style="font-size: 14px; font-weight: bold; color: #444; margin-bottom: 5px;"></div>
-            <div id="booking-warning" class="notice-banner" style="display: none; background: #f8d7da; color: #721c24; border-color: #f5c6cb; margin-bottom: 10px;">
-                ⚠️ <b>預約單提醒：</b>如果要修改或取消訂單，請直接聯絡店家處理！
-            </div>
-
-            <button id="cancel-order-btn" class="finish-btn" style="background: #d90429; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
-
-            <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-            <div style="text-align: left; font-size: 16px;">
-                <b>餐點明細：</b>
-                <ul id="track-items" style="padding-left: 20px; margin: 8px 0;"></ul>
-                <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
-            </div>
-            
-            <button id="acknowledge-btn" class="finish-btn" style="background: #17a2b8; display: none;" onclick="acknowledgeOrder()">了解，過去取餐</button>
-            <button id="finish-order-btn" class="finish-btn" style="background: #2b9348; display: none;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
-        </div>
+        <div id="tracker-list-container"></div>
+        <button class="finish-btn" style="background: #6c757d;" onclick="backToMenuOnly()">返回點餐頁面</button>
     </div>
 
     <!-- 歷史紀錄區塊 -->
@@ -361,12 +342,10 @@
 
     let cart = [];
     const tableNumber = "{{ table }}";
-    let currentOrderId = null;
+    let activePhone4 = null;
     let statusInterval = null;
-    let countdownInterval = null; // 即時單倒數計時器
-    let isCompletedAlertTriggered = false;
-    let lastKnownStatus = '';
-    let isUserAcknowledged = false;
+    let countdownTimers = {}; // 保存多個倒數計時器
+    let userAcknowledgedMap = {}; // 保存使用者點擊過「已知悉」的訂單狀態
     const alertAudio = document.getElementById('customer-alert-sound');
 
     const allSidesList = [
@@ -623,61 +602,139 @@
         fetch('/api/order', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(orderData) })
         .then(res => res.json())
         .then(data => {
-            if (data.success) { loadTrackerView(data.order_id); }
-            else { alert('送出失敗：' + (data.message || '未知錯誤')); }
+            if (data.success) { 
+                cart = [];
+                updateCartUI();
+                activePhone4 = phone.slice(-4);
+                startMultiStatusPolling();
+            } else { alert('送出失敗：' + (data.message || '未知錯誤')); }
         });
-    }
-
-    async function loadTrackerView(orderId) {
-        currentOrderId = orderId;
-        isCompletedAlertTriggered = false;
-        isUserAcknowledged = false;
-        try {
-            let res = await fetch(`/api/order/status?order_id=${orderId}`);
-            let data = await res.json();
-            if (data.success) {
-                let order = data.order;
-                lastKnownStatus = order.status;
-                document.getElementById('order-view').style.display = 'none';
-                document.getElementById('history-view').style.display = 'none';
-                document.getElementById('tracker-view').style.display = 'block';
-
-                document.getElementById('acknowledge-btn').style.display = 'none';
-                document.getElementById('finish-order-btn').style.display = 'none';
-
-                document.getElementById('track-phone').innerText = order.phone_last4;
-                document.getElementById('track-total').innerText = order.total;
-                
-                let typeBadge = order.order_type === '預約單' ? `📅 預約取餐時間：<b>${order.booking_time}</b>` : `⚡ 即時訂單`;
-                document.getElementById('track-order-type').innerHTML = typeBadge;
-
-                // 預約單顯示警語
-                document.getElementById('booking-warning').style.display = order.order_type === '預約單' ? 'block' : 'none';
-
-                let itemsHtml = '';
-                order.food_list.forEach(i => { itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`; });
-                document.getElementById('track-items').innerHTML = itemsHtml;
-                startStatusPolling();
-            }
-        } catch (e) { alert('找不到該訂單'); }
     }
 
     async function searchMyOrder() {
         let phone4 = document.getElementById('search-phone4').value.trim();
         if (phone4.length !== 4 || isNaN(phone4)) { alert('請輸入正確的電話後 4 碼！'); return; }
+        activePhone4 = phone4;
+        startMultiStatusPolling();
+    }
+
+    function startMultiStatusPolling() {
+        if (statusInterval) clearInterval(statusInterval);
+        fetchAndRenderOrders();
+        statusInterval = setInterval(fetchAndRenderOrders, 3000);
+    }
+
+    async function fetchAndRenderOrders() {
+        if (!activePhone4) return;
         try {
-            let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
+            let res = await fetch(`/api/order/status?phone_last4=${activePhone4}`);
             let data = await res.json();
             if (data.success) {
-                // 只要是未完成或未取消的訂單（包含預約單與即時單），都可以被搜尋到並帶入追蹤頁面！
-                let ongoingOrder = (data.orders || []).find(o => o.status === 'pending' || o.status === 'accepted' || o.status === 'ready' || o.status === 'acknowledged');
-                if (ongoingOrder) {
-                    loadTrackerView(ongoingOrder.id);
+                let allOrders = data.orders || [];
+                let ongoingOrders = allOrders.filter(o => o.status === 'pending' || o.status === 'accepted' || o.status === 'ready' || o.status === 'acknowledged');
+
+                if (ongoingOrders.length > 0) {
+                    document.getElementById('order-view').style.display = 'none';
+                    document.getElementById('history-view').style.display = 'none';
+                    document.getElementById('tracker-view').style.display = 'block';
+
+                    let container = document.getElementById('tracker-list-container');
+                    let html = '';
+
+                    ongoingOrders.forEach(order => {
+                        let isAckByMe = userAcknowledgedMap[order.id];
+                        let statusDisplay = "";
+                        let typeBadge = order.order_type === '預約單' ? `📅 預約取餐時間：<b>${order.booking_time}</b>` : `⚡ 即時訂單`;
+                        
+                        let cancelBtnStyle = "display: none;";
+                        let ackBtnStyle = "display: none;";
+                        let finishBtnStyle = "display: none;";
+
+                        if (isAckByMe || order.status === 'acknowledged') {
+                            statusDisplay = "已知悉，正在前往取餐路上...";
+                            finishBtnStyle = "display: block;";
+                        } else if (order.status === 'pending') {
+                            statusDisplay = order.order_type === '預約單' ? `預約 ${order.booking_time} 取餐 (等待店家接單)` : "等待店家接受訂單...";
+                            cancelBtnStyle = "display: block;";
+                        } else if (order.status === 'accepted') {
+                            statusDisplay = `<span id="timer-${order.id}">${order.est_time}</span>`;
+                        } else if (order.status === 'ready') {
+                            statusDisplay = "餐點已製作完成！請前往取餐";
+                            ackBtnStyle = "display: block;";
+                            alertAudio.play().catch(e => {});
+                        }
+
+                        let warningBanner = order.order_type === '預約單' ? `
+                            <div class="notice-banner" style="background: #f8d7da; color: #721c24; border-color: #f5c6cb; margin-bottom: 10px;">
+                                ⚠️ <b>預約單提醒：</b>如果要修改或取消訂單，請直接聯絡店家處理！
+                            </div>` : '';
+
+                        let itemsHtml = '';
+                        (order.food_list || []).forEach(i => {
+                            itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`;
+                        });
+
+                        html += `
+                            <div class="tracker-card" id="card-${order.id}">
+                                <div style="font-size: 13px; color: #666;">訂單編號: ${order.id}</div>
+                                <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
+                                <div style="font-size: 28px; font-weight: bold; color: #d90429; margin: 2px 0;">${order.phone_last4}</div>
+                                <div class="status-text">${statusDisplay}</div>
+                                <div style="font-size: 14px; font-weight: bold; color: #444; margin-bottom: 5px;">${typeBadge}</div>
+                                ${warningBanner}
+
+                                <button class="finish-btn" style="background: #d90429; ${cancelBtnStyle}" onclick="cancelMyOrder('${order.id}')">取消這筆訂單</button>
+                                <button class="finish-btn" style="background: #17a2b8; ${ackBtnStyle}" onclick="acknowledgeOrder('${order.id}')">了解，過去取餐</button>
+                                <button class="finish-btn" style="background: #2b9348; ${finishBtnStyle}" onclick="finishOrder('${order.id}')">取餐完成 (結案)</button>
+
+                                <hr style="border: 0; border-top: 1px solid #ccc; margin: 12px 0;">
+                                <div style="text-align: left; font-size: 15px;">
+                                    <b>餐點明細：</b>
+                                    <ul style="padding-left: 20px; margin: 6px 0;">${itemsHtml}</ul>
+                                    <div style="text-align: right; font-size: 16px; margin-top: 8px;"><b>總金額：$${order.total}</b></div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    container.innerHTML = html;
+
+                    // 重新發動倒數計時器
+                    ongoingOrders.forEach(order => {
+                        if (order.status === 'accepted' && order.order_type === '即時單' && order.target_timestamp > 0) {
+                            startIndividualCountdown(order.id, order.target_timestamp);
+                        }
+                    });
+
+                } else if (allOrders.length > 0) {
+                    renderHistoryList(allOrders, activePhone4);
                 } else {
-                    renderHistoryList(data.orders || [data.order], phone4);
+                    alert('找不到該末四碼對應的訂單紀錄');
+                    clearInterval(statusInterval);
                 }
-            } else { alert('找不到該末四碼對應的訂單紀錄'); }
-        } catch (e) { alert('查詢發生錯誤'); }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function startIndividualCountdown(orderId, targetTimestamp) {
+        if (countdownTimers[orderId]) clearInterval(countdownTimers[orderId]);
+        
+        function updateTimer() {
+            let el = document.getElementById(`timer-${orderId}`);
+            if (!el) return;
+            let now = Date.now() / 1000;
+            let diff = Math.floor(targetTimestamp - now);
+            if (diff <= 0) {
+                el.innerText = "餐點即將製作完成或已準備好！";
+                clearInterval(countdownTimers[orderId]);
+            } else {
+                let mins = Math.floor(diff / 60);
+                let secs = diff % 60;
+                el.innerText = `製作中，剩餘等候時間：${mins}分 ${String(secs).padStart(2, '0')}秒`;
+            }
+        }
+        updateTimer();
+        countdownTimers[orderId] = setInterval(updateTimer, 1000);
     }
 
     function renderHistoryList(ordersList, phone4) {
@@ -706,148 +763,34 @@
     }
 
     function backToMenuOnly() {
+        if (statusInterval) clearInterval(statusInterval);
         document.getElementById('history-view').style.display = 'none';
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
     }
 
-    function startCountdown(targetTimestamp) {
-        if (countdownInterval) clearInterval(countdownInterval);
-        
-        function updateTimer() {
-            let now = Date.now() / 1000;
-            let diff = Math.floor(targetTimestamp - now);
-            let statusText = document.getElementById('track-status');
-            
-            if (diff <= 0) {
-                statusText.innerText = "餐點即將製作完成或已準備好！";
-                clearInterval(countdownInterval);
-            } else {
-                let mins = Math.floor(diff / 60);
-                let secs = diff % 60;
-                statusText.innerText = `製作中，剩餘等候時間：${mins}分 ${String(secs).padStart(2, '0')}秒`;
-            }
-        }
-        updateTimer();
-        countdownInterval = setInterval(updateTimer, 1000);
-    }
-
-    function startStatusPolling() {
-        if (statusInterval) clearInterval(statusInterval);
-        statusInterval = setInterval(async () => {
-            if (!currentOrderId) return;
-            try {
-                let res = await fetch(`/api/order/status?order_id=${currentOrderId}`);
-                let data = await res.json();
-                if (data.success) {
-                    let order = data.order;
-                    let statusText = document.getElementById('track-status');
-                    let ackBtn = document.getElementById('acknowledge-btn');
-                    let finishBtn = document.getElementById('finish-order-btn');
-                    let cancelBtn = document.getElementById('cancel-order-btn');
-
-                    if (isUserAcknowledged) return;
-
-                    if (order.status !== lastKnownStatus || order.status === 'accepted') {
-                        lastKnownStatus = order.status;
-
-                        if (order.status === 'pending') {
-                            if (countdownInterval) clearInterval(countdownInterval);
-                            statusText.innerText = order.order_type === '預約單' ? `預約 ${order.booking_time} 取餐 (等待店家接單)` : "等待店家接受訂單...";
-                            cancelBtn.style.display = 'block';
-                            ackBtn.style.display = 'none';
-                            finishBtn.style.display = 'none';
-                        } else if (order.status === 'accepted') {
-                            cancelBtn.style.display = 'none';
-                            ackBtn.style.display = 'none';
-                            finishBtn.style.display = 'none';
-                            
-                            if (order.order_type === '即時單' && order.target_timestamp > 0) {
-                                // 啟動動態倒數計時
-                                startCountdown(order.target_timestamp);
-                            } else {
-                                statusText.innerText = order.est_time;
-                            }
-                        } else if (order.status === 'ready') {
-                            if (countdownInterval) clearInterval(countdownInterval);
-                            statusText.innerText = "餐點已製作完成！請前往取餐";
-                            cancelBtn.style.display = 'none';
-                            ackBtn.style.display = 'block';
-                            finishBtn.style.display = 'none';
-                            if (!isCompletedAlertTriggered) {
-                                alertAudio.play().catch(e => console.log('音效播放受阻:', e));
-                                isCompletedAlertTriggered = true;
-                            }
-                        } else if (order.status === 'acknowledged') {
-                            if (countdownInterval) clearInterval(countdownInterval);
-                            statusText.innerText = "已知悉，正在前往取餐路上...";
-                            cancelBtn.style.display = 'none';
-                            ackBtn.style.display = 'none';
-                            finishBtn.style.display = 'block';
-                        } else if (order.status === 'completed') {
-                            if (countdownInterval) clearInterval(countdownInterval);
-                            clearInterval(statusInterval);
-                            alertAudio.pause();
-                            alertAudio.currentTime = 0;
-                            document.getElementById('tracker-view').style.display = 'none';
-                            document.getElementById('order-view').style.display = 'block';
-                            
-                            cart = [];
-                            updateCartUI();
-                            alert('感謝您的光臨！');
-                        }
-                    }
-                }
-            } catch (e) { console.error(e); }
-        }, 3000);
-    }
-
-    async function acknowledgeOrder() {
-        if (!currentOrderId) return;
+    async function acknowledgeOrder(orderId) {
         alertAudio.pause();
         alertAudio.currentTime = 0;
-        if (countdownInterval) clearInterval(countdownInterval);
-
-        isUserAcknowledged = true;
-        lastKnownStatus = 'acknowledged';
-
-        document.getElementById('track-status').innerText = "已知悉，正在前往取餐路上...";
-        document.getElementById('acknowledge-btn').style.display = 'none';
-        document.getElementById('finish-order-btn').style.display = 'block';
-
-        await fetch(`/api/order/acknowledge`, { 
-            method: 'POST', 
-            headers: { 'Content-Type': 'application/json' }, 
-            body: JSON.stringify({ order_id: currentOrderId }) 
-        });
+        userAcknowledgedMap[orderId] = true;
+        await fetch(`/api/order/acknowledge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
+        fetchAndRenderOrders();
     }
 
-    async function finishOrder() {
-        if (!currentOrderId) return;
+    async function finishOrder(orderId) {
         alertAudio.pause();
         alertAudio.currentTime = 0;
-        if (countdownInterval) clearInterval(countdownInterval);
-
-        await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
-        
-        document.getElementById('tracker-view').style.display = 'none';
-        document.getElementById('order-view').style.display = 'block';
-        
-        cart = [];
-        updateCartUI();
-        currentOrderId = null;
-        lastKnownStatus = '';
-        isUserAcknowledged = false;
+        await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
+        fetchAndRenderOrders();
     }
 
-    async function cancelMyOrder() {
-        if (!currentOrderId) return;
+    async function cancelMyOrder(orderId) {
         if (!confirm('確定要取消這筆訂單嗎？')) return;
-        let res = await fetch(`/api/order/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
+        let res = await fetch(`/api/order/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
         let data = await res.json();
         if (data.success) {
             alert('訂單已取消');
-            location.reload();
+            fetchAndRenderOrders();
         } else {
             alert('取消失敗：' + (data.message || '未知原因'));
         }
