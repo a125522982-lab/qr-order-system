@@ -227,7 +227,7 @@ def place_order():
 
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000"))
-        booking_time = data.get("booking_time", "").strip() # 預約時間 (若為空則是即時訂單)
+        booking_time = data.get("booking_time", "").strip()
         
         taiwan_timezone = timezone(timedelta(hours=8))
         now_str = datetime.now(taiwan_timezone).strftime("%m/%d %H:%M")
@@ -246,6 +246,7 @@ def place_order():
             "order_type": order_type,
             "booking_time": booking_time,
             "est_time": est_time_display,
+            "target_timestamp": 0, # 用於即時單倒數計時
             "created_at": now_str
         }
 
@@ -277,16 +278,21 @@ def check_order_status():
 def accept_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
-    est_minutes = data.get("est_minutes", "") # 即時單回報的分鐘數 (例: "15分鐘")
+    est_minutes = int(data.get("est_minutes", 15)) # 預設15分鐘
     
     for i, order in enumerate(ORDERS):
         if str(order.get("id")) == target_id:
             found = ORDERS.pop(i)
             found["status"] = "accepted"
             
-            # 若是預約單，保留原本的預約時間；若是即時單，套用店家回報的分鐘數
-            if found["order_type"] == "即時單" and est_minutes:
-                found["est_time"] = f"約需等待 {est_minutes}"
+            if found["order_type"] == "即時單":
+                # 計算倒數計時結束的絕對時間戳記 (現在時間 + 分鐘數)
+                target_ts = time.time() + (est_minutes * 60)
+                found["target_timestamp"] = target_ts
+                found["est_time"] = f"{est_minutes}分鐘"
+            else:
+                # 預約單維持原本預約時間
+                found["est_time"] = f"預約 {found['booking_time']} 取餐"
             
             ACCEPTED_ORDERS.append(found)
             
