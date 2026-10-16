@@ -309,6 +309,7 @@
     let statusInterval = null;
     let isCompletedAlertTriggered = false;
     let lastKnownStatus = '';
+    let isUserAcknowledged = false; // <--- 新增鎖定旗標：防止輪詢覆蓋客人的點擊
     const alertAudio = document.getElementById('customer-alert-sound');
 
     const allSidesList = [
@@ -565,6 +566,7 @@
     async function loadTrackerView(orderId) {
         currentOrderId = orderId;
         isCompletedAlertTriggered = false;
+        isUserAcknowledged = false; // 重置旗標
         try {
             let res = await fetch(`/api/order/status?order_id=${orderId}`);
             let data = await res.json();
@@ -651,6 +653,11 @@
                     let finishBtn = document.getElementById('finish-order-btn');
                     let cancelBtn = document.getElementById('cancel-order-btn');
 
+                    // 如果使用者已經手動點過「了解，過去取餐」，則完全鎖死狀態，不理會後台的重複輪詢
+                    if (isUserAcknowledged) {
+                        return;
+                    }
+
                     if (order.status !== lastKnownStatus) {
                         lastKnownStatus = order.status;
 
@@ -685,10 +692,8 @@
                             document.getElementById('tracker-view').style.display = 'none';
                             document.getElementById('order-view').style.display = 'block';
                             
-                            // 結案時徹底清空購物車
                             cart = [];
                             updateCartUI();
-                            
                             alert('感謝您的光臨！');
                         }
                     }
@@ -699,7 +704,11 @@
 
     async function acknowledgeOrder() {
         if (!currentOrderId) return;
+        
+        // 鎖定狀態：防止 3 秒輪詢再次覆蓋畫面
+        isUserAcknowledged = true;
         lastKnownStatus = 'acknowledged';
+
         document.getElementById('track-status').innerText = "已知悉，正在前往取餐路上...";
         document.getElementById('acknowledge-btn').style.display = 'none';
         document.getElementById('finish-order-btn').style.display = 'block';
@@ -720,11 +729,11 @@
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         
-        // 點擊「取餐完成」後立刻清空購物車與重置狀態
         cart = [];
         updateCartUI();
         currentOrderId = null;
         lastKnownStatus = '';
+        isUserAcknowledged = false;
     }
 
     async function cancelMyOrder() {
