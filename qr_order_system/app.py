@@ -2,6 +2,7 @@ import json
 import os
 import socket
 import time
+from datetime import datetime
 from flask import Flask, jsonify, render_template, request
 
 app = Flask(__name__)
@@ -151,13 +152,10 @@ def admin_page():
         item_stats=item_stats
     )
 
-# 提供給前端輪詢檢查訂單數量的 API
 @app.route("/api/admin/check_orders", methods=["GET"])
 def api_check_orders():
     return jsonify({
-        "pending_count": len(ORDERS),
-        "accepted_count": len(ACCEPTED_ORDERS),
-        "completed_count": len(COMPLETED_ORDERS)
+        "pending_count": len(ORDERS)
     })
 
 @app.route("/api/hours/save", methods=["POST"])
@@ -232,6 +230,7 @@ def place_order():
 
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000"))
+        now_str = datetime.now().strftime("%m/%d %H:%M")
         
         new_order = {
             "id": order_id,
@@ -241,7 +240,8 @@ def place_order():
             "food_list": data.get("items", []),
             "total": int(data.get("total", 0)),
             "status": "pending",
-            "est_time": ""
+            "est_time": "",
+            "created_at": now_str
         }
 
         ORDERS.append(new_order)
@@ -259,10 +259,13 @@ def check_order_status():
         for o in all_orders:
             if str(o.get("id")) == str(order_id):
                 return jsonify({"success": True, "order": o})
+                
     if phone_last4:
-        for o in reversed(all_orders):
-            if str(o.get("phone_last4")) == str(phone_last4) and o.get("status") in ["pending", "accepted", "completed"]:
-                return jsonify({"success": True, "order": o})
+        matched = [o for o in all_orders if str(o.get("phone_last4")) == str(phone_last4)]
+        if matched:
+            # 最新排最前面
+            matched_sorted = sorted(matched, key=lambda x: str(x.get("id", "")), reverse=True)
+            return jsonify({"success": True, "orders": matched_sorted, "order": matched_sorted[0]})
                 
     return jsonify({"success": False}), 404
 
@@ -283,7 +286,7 @@ def accept_order():
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(2)
                 s.connect((PRINTER_IP, PRINTER_PORT))
-                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n".encode("big5", errors="ignore")
+                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n時間: {found.get('created_at','')}\n".encode("big5", errors="ignore")
                 for item in found['food_list']:
                     print_data += f"{item['name']} x {item['quantity']}\n".encode("big5", errors="ignore")
                 print_data += f"總計: ${found['total']}\n\n\n\x1d\x56\x42\x00".encode("big5", errors="ignore")
