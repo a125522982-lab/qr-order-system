@@ -15,10 +15,11 @@
         th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; vertical-align: middle; }
         th { background: #f8f9fa; }
         
-        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        button { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 4px; }
         .btn-success { background: #2b9348; color: white; }
         .btn-danger { background: #d90429; color: white; }
         .btn-primary { background: #17a2b8; color: white; }
+        .btn-warning { background: #ff922b; color: white; }
         
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         @media(max-width: 768px) { .stats-grid { grid-template-columns: 1fr; } }
@@ -104,7 +105,7 @@
                 <tr>
                     <th>桌號</th>
                     <th>電話末四碼</th>
-                    <th>預估時間</th>
+                    <th>當前狀態 / 預估時間</th>
                     <th>餐點內容與規格</th>
                     <th>總金額</th>
                     <th>操作</th>
@@ -115,7 +116,13 @@
                 <tr>
                     <td><b>{{ o.table }} 號桌</b></td>
                     <td><b>{{ o.phone_last4 }}</b></td>
-                    <td style="color: #e63946; font-weight: bold;">{{ o.est_time }}</td>
+                    <td>
+                        {% if o.status == 'ready' %}
+                            <span style="color: #ff922b; font-weight: bold;">🔔 已通知取餐</span>
+                        {% else %}
+                            <span style="color: #e63946; font-weight: bold;">{{ o.est_time }}</span>
+                        {% endif %}
+                    </td>
                     <td>
                         <ul style="margin: 0; padding-left: 15px;">
                             {% for item in o.food_list %}
@@ -125,7 +132,10 @@
                     </td>
                     <td>${{ o.total }}</td>
                     <td>
-                        <button class="btn-primary" onclick="completeOrder('{{ o.id }}')">完成取餐</button>
+                        {% if o.status != 'ready' %}
+                            <button class="btn-warning" onclick="readyOrder('{{ o.id }}')">📢 製作完成 (通知取餐)</button>
+                        {% endif %}
+                        <button class="btn-primary" onclick="completeOrder('{{ o.id }}')">完成取餐 (結案)</button>
                     </td>
                 </tr>
                 {% else %}
@@ -247,21 +257,19 @@
     </div>
 </div>
 
-<!-- 後台新訂單提醒音效（正確讀取 alert.mp3 並持續循環直到接單） -->
+<!-- 後台新訂單提醒音效 -->
 <audio id="admin-alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
     let lastPendingCount = {{ orders | length }};
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
-    // 頁面載入時若已有待處理訂單則自動播放
     window.addEventListener('load', () => {
         if (lastPendingCount > 0) {
             playAlertSound();
         }
     });
 
-    // 點擊頁面任意處解除瀏覽器自動播放限制
     document.addEventListener('click', () => {
         if (lastPendingCount > 0 && adminAlertAudio.paused) {
             playAlertSound();
@@ -280,7 +288,6 @@
         adminAlertAudio.currentTime = 0;
     }
 
-    // 每 3 秒自動輪詢檢查新訂單
     setInterval(async () => {
         if (document.activeElement.tagName === "INPUT") return;
         try {
@@ -395,6 +402,19 @@
         let data = await res.json();
         if (data.success) { location.reload(); }
         else { alert('操作失敗'); }
+    }
+
+    async function readyOrder(orderId) {
+        let res = await fetch('/api/order/ready', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: orderId })
+        });
+        let data = await res.json();
+        if (data.success) { 
+            alert('已發送取餐通知給顧客！');
+            location.reload(); 
+        } else { alert('操作失敗'); }
     }
 
     async function completeOrder(orderId) {
