@@ -231,7 +231,6 @@ def place_order():
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000"))
         
-        # 強制設定為台灣時間 (UTC+8)
         taiwan_timezone = timezone(timedelta(hours=8))
         now_str = datetime.now(taiwan_timezone).strftime("%m/%d %H:%M")
         
@@ -298,6 +297,17 @@ def accept_order():
                 pass
             return jsonify({"success": True})
             
+    return jsonify({"success": False}), 404
+
+# 【新增】通知餐點已製作完成 (狀態轉為 ready)
+@app.route("/api/order/ready", methods=["POST"])
+def ready_order():
+    data = request.get_json(silent=True) or {}
+    target_id = str(data.get("order_id", ""))
+    for order in ACCEPTED_ORDERS:
+        if str(order.get("id")) == target_id:
+            order["status"] = "ready"
+            return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
 @app.route("/api/order/complete", methods=["POST"])
