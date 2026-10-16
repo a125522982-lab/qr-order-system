@@ -12,7 +12,6 @@
         h1 { font-size: 24px; text-align: center; margin: 10px 0 5px 0; color: #111; }
         .table-badge { background: #ffc107; color: #222; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 15px; }
         
-        /* 店家資訊卡片樣式 */
         .store-info-card { background: #fff; border: 1px solid #e9ecef; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .store-info-title { font-weight: bold; font-size: 16px; color: #e63946; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .store-info-content { font-size: 14px; color: #555; line-height: 1.6; }
@@ -63,7 +62,6 @@
         .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
         .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
         .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 25px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; display: none; }
-        
         .history-card { background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 12px; text-align: left; }
     </style>
 </head>
@@ -74,7 +72,7 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
-    <!-- 店家資訊卡片（含營業時間、電話、地址與 Google 導航） -->
+    <!-- 店家資訊卡片 -->
     <div class="store-info-card">
         <div class="store-info-title">
             <i class="bi bi-shop"></i> 酷嗑斯美式炸雞 - 店家資訊
@@ -170,16 +168,15 @@
         </div>
     </div>
 
-    <!-- 追蹤區塊 (進行中訂單) -->
+    <!-- 追蹤區塊 -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
         <h2>📋 當前訂單狀態追蹤</h2>
         <div class="tracker-card">
             <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
             <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
             <div class="status-text" id="track-status">等待店家接受訂單...</div>
-            <div id="est-time-container" style="font-size: 18px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
 
-            <button id="cancel-order-btn" class="danger" style="padding: 10px 20px; font-size: 15px; margin-bottom: 10px; display: none; width: 100%; border-radius: 6px; background: #d90429; color: white;" onclick="cancelMyOrder()">取消這筆訂單</button>
+            <button id="cancel-order-btn" class="finish-btn" style="background: #d90429; display: none;" onclick="cancelMyOrder()">取消這筆訂單</button>
 
             <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
             <div style="text-align: left; font-size: 16px;">
@@ -188,13 +185,12 @@
                 <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
             </div>
             
-            <!-- 階段按鈕 -->
-            <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
-            <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
+            <button id="acknowledge-btn" class="finish-btn" style="background: #17a2b8; display: none;" onclick="acknowledgeOrder()">了解，過去取餐</button>
+            <button id="finish-order-btn" class="finish-btn" style="background: #2b9348; display: none;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
         </div>
     </div>
 
-    <!-- 歷史訂單紀錄區塊 (多筆清單) -->
+    <!-- 歷史紀錄區塊 -->
     <div id="history-view" style="display: none;" class="tracker-section">
         <h2>📜 歷史訂單紀錄 (電話末四碼: <span id="history-phone4"></span>)</h2>
         <div id="history-list-container"></div>
@@ -202,7 +198,7 @@
     </div>
 </div>
 
-<!-- 客製化選購彈窗 (包含胡椒、辣度、醬料、附餐選擇) -->
+<!-- 客製化選購彈窗 -->
 <div class="modal-overlay" id="option-modal">
     <div class="modal-card">
         <div class="modal-header">
@@ -291,31 +287,19 @@
     
     function checkIsOpenNow() {
         if (hoursData && hoursData.force_close) return false;
-        
         const now = new Date();
         const day = now.getDay();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
         if (day === 1 || day === 2) return false;
-
         let openMinutes = 11 * 60 + 30;
-        let closeMinutes = 0;
-
-        if (day === 3 || day === 4) closeMinutes = 19 * 60 + 30;
-        else if (day === 5 || day === 6) closeMinutes = 21 * 60 + 30;
-        else if (day === 0) closeMinutes = 20 * 60;
-
+        let closeMinutes = (day === 3 || day === 4) ? (19 * 60 + 30) : ((day === 5 || day === 6) ? (21 * 60 + 30) : (20 * 60));
         return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-        const isOpen = checkIsOpenNow();
-        if (!isOpen) {
+        if (!checkIsOpenNow()) {
             document.getElementById('closed-banner').style.display = 'block';
             document.getElementById('order-view').style.display = 'none';
-        } else {
-            document.getElementById('closed-banner').style.display = 'none';
-            document.getElementById('order-view').style.display = 'block';
         }
     });
 
@@ -335,19 +319,13 @@
 
     let currentModalItem = { id: '', name: '', price: 0, qty: 1, pepper: '要胡椒', spicy: '不辣', category: '', sauces: {}, sides: {} };
 
-    document.addEventListener('click', () => {
-        if (alertAudio.paused) { alertAudio.load(); }
-    }, { once: true });
+    document.addEventListener('click', () => { if (alertAudio.paused) alertAudio.load(); }, { once: true });
 
     function filterMenu(category, btn) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         document.querySelectorAll('.menu-item').forEach(item => {
-            if (category === 'all' || item.getAttribute('data-category') === category) {
-                item.style.display = 'flex';
-            } else {
-                item.style.display = 'none';
-            }
+            item.style.display = (category === 'all' || item.getAttribute('data-category') === category) ? 'flex' : 'none';
         });
     }
 
@@ -592,6 +570,7 @@
             let data = await res.json();
             if (data.success) {
                 let order = data.order;
+                lastKnownStatus = order.status;
                 document.getElementById('order-view').style.display = 'none';
                 document.getElementById('history-view').style.display = 'none';
                 document.getElementById('tracker-view').style.display = 'block';
@@ -705,6 +684,11 @@
                             alertAudio.currentTime = 0;
                             document.getElementById('tracker-view').style.display = 'none';
                             document.getElementById('order-view').style.display = 'block';
+                            
+                            // 結案時徹底清空購物車
+                            cart = [];
+                            updateCartUI();
+                            
                             alert('感謝您的光臨！');
                         }
                     }
@@ -735,6 +719,10 @@
         
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
+        
+        // 點擊「取餐完成」後立刻清空購物車與重置狀態
+        cart = [];
+        updateCartUI();
         currentOrderId = null;
         lastKnownStatus = '';
     }
