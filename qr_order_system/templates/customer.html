@@ -64,10 +64,11 @@
         <span class="table-badge">桌號：{{ table }} 號桌</span>
     </div>
 
+    <!-- 查詢或追蹤區塊 -->
     <div class="search-section">
-        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單狀態</span>
+        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單 / 歷史訂單狀態</span>
         <div class="search-box">
-            <input type="tel" id="search-phone4" placeholder="電話後4碼" maxlength="4">
+            <input type="tel" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
             <button onclick="searchMyOrder()" style="background: #17a2b8; padding: 6px 14px;">查詢</button>
         </div>
     </div>
@@ -127,6 +128,7 @@
         </div>
     </div>
 
+    <!-- 追蹤 / 歷史檢視區塊 -->
     <div id="tracker-view" style="display: none;" class="tracker-section">
         <h2>📋 訂單狀態追蹤</h2>
         <div class="tracker-card">
@@ -144,9 +146,10 @@
                 <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
             </div>
             
-            <!-- 階段按鈕：先顯示「了解，過去取餐」，點擊後該按鈕消失並顯示「取餐完成」 -->
+            <!-- 階段按鈕 -->
             <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
             <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
+            <button id="back-to-menu-btn" class="finish-btn" style="display: none; background: #6c757d;" onclick="backToMenuOnly()">返回點餐頁面</button>
         </div>
     </div>
 </div>
@@ -548,13 +551,22 @@
                 document.getElementById('tracker-view').style.display = 'block';
                 document.getElementById('acknowledge-btn').style.display = 'none';
                 document.getElementById('finish-order-btn').style.display = 'none';
+                document.getElementById('back-to-menu-btn').style.display = 'none';
+
                 document.getElementById('track-phone').innerText = order.phone_last4;
                 document.getElementById('track-total').innerText = order.total;
                 
                 let itemsHtml = '';
                 order.food_list.forEach(i => { itemsHtml += `<li><b>${i.name}</b> x ${i.quantity} ($${i.price * i.quantity})</li>`; });
                 document.getElementById('track-items').innerHTML = itemsHtml;
-                startStatusPolling();
+                
+                if (order.status !== 'completed') {
+                    startStatusPolling();
+                } else {
+                    // 若是查詢歷史已完成訂單
+                    document.getElementById('track-status').innerText = '✅ 狀態：此筆訂單已完成取餐';
+                    document.getElementById('back-to-menu-btn').style.display = 'block';
+                }
             }
         } catch (e) { alert('找不到該訂單'); }
     }
@@ -566,9 +578,8 @@
             let res = await fetch(`/api/order/status?phone_last4=${phone4}`);
             let data = await res.json();
             if (data.success) {
-                if (data.order.status === 'completed') { alert('這筆訂單已經完成取餐囉！'); return; }
                 loadTrackerView(data.order.id);
-            } else { alert('找不到該末四碼對應的進行中訂單'); }
+            } else { alert('找不到該末四碼對應的訂單紀錄'); }
         } catch (e) { alert('查詢發生錯誤'); }
     }
 
@@ -595,7 +606,7 @@
                     } else if (order.status === 'completed') {
                         statusEl.innerText = '✅ 狀態：餐點已完成，請至櫃檯憑電話後四碼取餐！';
                         if(cancelBtn) cancelBtn.style.display = 'none';
-                        // 訂單完成時，一開始只顯示「了解，過去取餐」
+                        
                         if (!isCompletedAlertTriggered) {
                             document.getElementById('acknowledge-btn').style.display = 'block';
                             document.getElementById('finish-order-btn').style.display = 'none';
@@ -628,6 +639,14 @@
         updateCartUI();
         currentOrderId = null;
         isCompletedAlertTriggered = false;
+        document.getElementById('tracker-view').style.display = 'none';
+        document.getElementById('order-view').style.display = 'block';
+        document.getElementById('search-phone4').value = '';
+    }
+
+    // 純返回點餐頁面（用於檢視已完成歷史訂單時返回）
+    function backToMenuOnly() {
+        if (statusInterval) clearInterval(statusInterval);
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         document.getElementById('search-phone4').value = '';
