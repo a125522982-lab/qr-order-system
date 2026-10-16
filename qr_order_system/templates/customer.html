@@ -1,291 +1,3 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>酷嗑斯美式炸雞 - 線上點餐</title>
-    <!-- 引入 Bootstrap Icons (用於店家資訊圖示) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background: #f4f6f8; color: #333; }
-        .container { width: 100%; min-height: 100vh; background: white; padding: 12px; padding-bottom: 100px; max-width: 600px; margin: 0 auto; }
-        h1 { font-size: 24px; text-align: center; margin: 10px 0 5px 0; color: #111; }
-        .table-badge { background: #ffc107; color: #222; padding: 4px 12px; border-radius: 20px; font-weight: bold; font-size: 14px; display: inline-block; margin-bottom: 15px; }
-        
-        /* 店家資訊卡片樣式 */
-        .store-info-card { background: #fff; border: 1px solid #e9ecef; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-        .store-info-title { font-weight: bold; font-size: 16px; color: #e63946; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .store-info-content { font-size: 14px; color: #555; line-height: 1.6; }
-        .store-info-content div { margin-bottom: 6px; display: flex; align-items: flex-start; gap: 6px; }
-
-        .search-section { background: #fff8e1; padding: 10px; border-radius: 8px; margin-bottom: 15px; text-align: center; border: 1px solid #ffe082; }
-        .search-box { display: flex; gap: 8px; justify-content: center; margin-top: 6px; }
-        .search-box input { padding: 8px 12px; width: 180px; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
-        .category-tabs { display: flex; gap: 8px; overflow-x: auto; white-space: nowrap; padding-bottom: 8px; margin-bottom: 15px; scrollbar-width: none; }
-        .category-tabs::-webkit-scrollbar { display: none; }
-        .tab-btn { padding: 8px 16px; background: #e9ecef; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; color: #495057; font-size: 15px; flex-shrink: 0; }
-        .tab-btn.active { background: #e63946; color: white; }
-        .menu-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-        .menu-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; padding: 12px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
-        .menu-item[data-category="promo"] { background: #fff9db; border-color: #fcc419; }
-        .item-info { flex-grow: 1; padding-right: 10px; }
-        .item-name { font-weight: bold; font-size: 17px; margin-bottom: 6px; color: #222; }
-        .item-price { color: #e63946; font-weight: bold; font-size: 16px; }
-        button { padding: 8px 16px; background: #2b9348; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; }
-        .cart-section { border-top: 3px solid #f1f3f5; padding-top: 15px; margin-top: 20px; }
-        .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 15px; }
-        .cart-table th, .cart-table td { border-bottom: 1px solid #eee; padding: 10px 6px; text-align: left; vertical-align: middle; }
-        .cart-table th { background: #f8f9fa; color: #495057; }
-        .item-spec-tag { font-size: 12px; color: #6c757d; margin-top: 2px; }
-        .total-price { font-size: 20px; font-weight: bold; text-align: right; margin-bottom: 15px; color: #d90429; }
-        .checkout-btn { width: 100%; padding: 14px; background: #2b9348; font-size: 18px; border-radius: 8px; }
-        
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: flex-end; }
-        .modal-card { width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; background: white; border-radius: 16px 16px 0 0; padding: 20px; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
-        .modal-title { font-size: 20px; font-weight: bold; }
-        .modal-price { color: #e63946; font-size: 18px; font-weight: bold; }
-        .modal-option-title { font-weight: bold; font-size: 15px; margin-top: 12px; margin-bottom: 4px; color: #495057; display: flex; justify-content: space-between; align-items: center; }
-        .limit-hint { font-size: 13px; color: #e63946; font-weight: normal; }
-        .options-group { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
-        .option-btn { padding: 8px 14px; border: 1px solid #ced4da; background: #f8f9fa; border-radius: 6px; cursor: pointer; font-size: 14px; color: #333; font-weight: 500; }
-        .option-btn.selected { background: #e63946; color: white; border-color: #e63946; }
-        
-        .sub-item-row { display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 8px 12px; border-radius: 6px; margin-bottom: 6px; border: 1px solid #e9ecef; }
-        .sub-item-name { font-size: 14px; font-weight: 500; }
-        .sub-controls { display: flex; align-items: center; gap: 10px; }
-        .sub-btn { width: 28px; height: 28px; border-radius: 50%; background: #dee2e6; color: #333; border: none; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-
-        .modal-qty-box { display: flex; align-items: center; justify-content: center; gap: 15px; margin: 20px 0; }
-        .qty-btn { width: 36px; height: 36px; border-radius: 50%; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; background: #e9ecef; color: #333; }
-        .tracker-card { background: #e2f0cb; border: 1px solid #b5e28d; padding: 20px 15px; border-radius: 10px; text-align: center; }
-        .status-text { font-size: 20px; font-weight: bold; color: #386641; margin: 15px 0; }
-        .finish-btn { width: 100%; padding: 14px; background: #d90429; font-size: 18px; margin-top: 15px; border-radius: 8px; }
-        .notice-banner { background: #fff3cd; border: 1px solid #ffe8a1; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; margin-bottom: 10px; }
-        .closed-banner { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; padding: 25px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; margin-top: 20px; display: none; }
-        
-        .history-card { background: #ffffff; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; margin-bottom: 12px; text-align: left; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🍗 酷嗑斯美式炸雞</h1>
-    <div style="text-align: center;">
-        <span class="table-badge">桌號：{{ table }} 號桌</span>
-    </div>
-
-    <!-- 店家資訊卡片 -->
-    <div class="store-info-card">
-        <div class="store-info-title">
-            <i class="bi bi-shop"></i> 酷嗑斯美式炸雞 - 店家資訊
-        </div>
-        <div class="store-info-content">
-            <div>
-                <i class="bi bi-clock text-danger mt-1"></i>
-                <div>
-                    <strong>營業時間：</strong><br>
-                    <small>• 週三、週四：11:30 – 19:30</small><br>
-                    <small>• 週五、週六：11:30 – 21:30</small><br>
-                    <small>• 週日：11:30 – 20:00</small><br>
-                    <small class="text-muted">• 週一、週二公休</small>
-                </div>
-            </div>
-            <div>
-                <i class="bi bi-telephone text-danger"></i>
-                <span><strong>聯絡電話：</strong><a href="tel:0903100990" class="text-decoration-none text-dark">0903-100-990</a></span>
-            </div>
-            <div>
-                <i class="bi bi-geo-alt text-danger"></i>
-                <span><strong>店家地址：</strong>
-                    <a href="https://maps.google.com/?q=台北市大同區延平北路四段50號" target="_blank" class="text-decoration-none text-primary fw-bold">
-                        台北市大同區延平北路四段50號 <i class="bi bi-box-arrow-up-right small"></i>
-                    </a>
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- 查詢或追蹤區塊 -->
-    <div class="search-section">
-        <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單 / 歷史訂單紀錄</span>
-        <div class="search-box">
-            <input type="tel" id="search-phone4" placeholder="請輸入電話後4碼" maxlength="4">
-            <button onclick="searchMyOrder()" style="background: #17a2b8; padding: 6px 14px;">查詢</button>
-        </div>
-    </div>
-
-    <div id="closed-banner" class="closed-banner">
-        🔴 目前為非營業時間或已打烊，暫停線上點餐！
-    </div>
-
-    <div id="order-view">
-        <div class="category-tabs">
-            <button class="tab-btn active" onclick="filterMenu('all', this)">全部</button>
-            <button class="tab-btn" onclick="filterMenu('promo', this)" style="background: #fff3cd; color: #b7791f; border: 1px solid #f6e05e;">🔥 優惠專區</button>
-            <button class="tab-btn" onclick="filterMenu('fried', this)">單點炸物</button>
-            <button class="tab-btn" onclick="filterMenu('cheese', this)">🧀 起司系列</button>
-            <button class="tab-btn" onclick="filterMenu('lemon', this)">🍋 香檸系列</button>
-            <button class="tab-btn" onclick="filterMenu('combo', this)">超值套餐</button>
-            <button class="tab-btn" onclick="filterMenu('bucket', this)">人氣滿足桶</button>
-            <button class="tab-btn" onclick="filterMenu('drink', this)">🥤 飲料</button>
-        </div>
-
-        <div class="menu-grid" id="menu-grid">
-            {% for id, item in menu.items() %}
-                <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
-                    <div class="item-info">
-                        <div class="item-name">
-                            {% if item.get('category') == 'promo' %}🔥 {% endif %}{{ item.get('name', '') }}
-                        </div>
-                        <div class="item-price">${{ item.get('price', 0) }}</div>
-                    </div>
-                    <div>
-                        <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-
-        <div class="cart-section">
-            <h2>🛒 您的購物車</h2>
-            <table class="cart-table">
-                <thead>
-                    <tr>
-                        <th>品名與口味</th>
-                        <th>單價</th>
-                        <th>數量</th>
-                        <th>小計</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="cart-body">
-                    <tr>
-                        <td colspan="5" style="text-align: center; color: #777; padding: 20px;">購物車目前是空的</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total-price">總金額: $<span id="total-amount">0</span></div>
-            <button class="checkout-btn" onclick="promptCheckout()">立即送出訂單</button>
-        </div>
-    </div>
-
-    <!-- 追蹤區塊 (進行中訂單) -->
-    <div id="tracker-view" style="display: none;" class="tracker-section">
-        <h2>📋 當前訂單狀態追蹤</h2>
-        <div class="tracker-card">
-            <div style="font-size: 15px; color: #555;">取餐編號（電話末四碼）</div>
-            <div id="track-phone" style="font-size: 32px; font-weight: bold; color: #d90429; margin: 5px 0;"></div>
-            <div class="status-text" id="track-status">等待店家接受訂單...</div>
-            <div id="est-time-container" style="font-size: 18px; color: #d90429; font-weight: bold; margin-bottom: 10px;"></div>
-
-            <button id="cancel-order-btn" class="danger" style="padding: 10px 20px; font-size: 15px; margin-bottom: 10px; display: none; width: 100%; border-radius: 6px; background: #d90429; color: white;" onclick="cancelMyOrder()">取消這筆訂單</button>
-
-            <hr style="border: 0; border-top: 1px solid #ccc; margin: 15px 0;">
-            <div style="text-align: left; font-size: 16px;">
-                <b>餐點明細：</b>
-                <ul id="track-items" style="padding-left: 20px; margin: 8px 0;"></ul>
-                <div style="text-align: right; font-size: 18px; margin-top: 10px;"><b>總金額：$<span id="track-total">0</span></b></div>
-            </div>
-            
-            <!-- 階段按鈕 -->
-            <button id="acknowledge-btn" class="finish-btn" style="display: none; background: #17a2b8;" onclick="acknowledgeOrder()">了解，過去取餐</button>
-            <button id="finish-order-btn" class="finish-btn" style="display: none; background: #2b9348;" onclick="finishOrder()">取餐完成 (返回點餐)</button>
-        </div>
-    </div>
-
-    <!-- 歷史訂單紀錄區塊 (多筆清單) -->
-    <div id="history-view" style="display: none;" class="tracker-section">
-        <h2>📜 歷史訂單紀錄 (電話末四碼: <span id="history-phone4"></span>)</h2>
-        <div id="history-list-container"></div>
-        <button class="finish-btn" style="background: #6c757d; margin-top: 10px;" onclick="backToMenuOnly()">返回點餐頁面</button>
-    </div>
-</div>
-
-<!-- 客製化選購彈窗 -->
-<div class="modal-overlay" id="option-modal">
-    <div class="modal-card">
-        <div class="modal-header">
-            <div>
-                <div class="modal-title" id="modal-item-name">餐點名稱</div>
-                <div class="modal-price" id="modal-item-price">$0</div>
-            </div>
-            <button onclick="closeOptionModal()" style="background: #e9ecef; color: #333; padding: 4px 10px; font-size: 18px;">✕</button>
-        </div>
-
-        <div id="seasoning-section">
-            <div class="modal-option-title">🧂 胡椒選擇：</div>
-            <div class="options-group" id="pepper-options">
-                <div class="option-btn selected" onclick="selectOption('pepper', '要胡椒', this)">要胡椒</div>
-                <div class="option-btn" onclick="selectOption('pepper', '不要胡椒', this)">不要胡椒</div>
-            </div>
-
-            <div class="modal-option-title">🌶️ 辣度選擇：</div>
-            <div class="options-group" id="spicy-options">
-                <div class="option-btn selected" onclick="selectOption('spicy', '不辣', this)">不辣</div>
-                <div class="option-btn" onclick="selectOption('spicy', '小辣', this)">小辣</div>
-                <div class="option-btn" onclick="selectOption('spicy', '中辣', this)">中辣</div>
-                <div class="option-btn" onclick="selectOption('spicy', '大辣', this)">大辣</div>
-                <div class="option-btn" onclick="selectOption('spicy', '另外附', this)">另外附</div>
-            </div>
-        </div>
-
-        <div id="sauce-section" style="display: none;">
-            <div id="whole-chicken-notice" class="notice-banner" style="display: none;">
-                ⚠️ 提示：本餐點胡椒、辣椒一律另外附！
-            </div>
-            <div class="modal-option-title" style="color: #e63946;">
-                🥣 醬料選擇
-                <span class="limit-hint">已選 <span id="sauce-count">0</span> / 2 份</span>
-            </div>
-            <div id="sauce-list-container">
-                <div class="sub-item-row">
-                    <span class="sub-item-name">番茄醬</span>
-                    <div class="sub-controls">
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '番茄醬', -1)">-</button>
-                        <span id="sauce_番茄醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '番茄醬', 1)">+</button>
-                    </div>
-                </div>
-                <div class="sub-item-row">
-                    <span class="sub-item-name">起司醬</span>
-                    <div class="sub-controls">
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '起司醬', -1)">-</button>
-                        <span id="sauce_起司醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '起司醬', 1)">+</button>
-                    </div>
-                </div>
-                <div class="sub-item-row">
-                    <span class="sub-item-name">香菜檸檬醬</span>
-                    <div class="sub-controls">
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '香菜檸檬醬', -1)">-</button>
-                        <span id="sauce_香菜檸檬醬" style="font-weight: bold; width: 20px; text-align: center;">0</span>
-                        <button class="sub-btn" onclick="changeSubQty('sauce', '香菜檸檬醬', 1)">+</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="chicken-sides-section" style="display: none;">
-            <div class="modal-option-title" style="color: #d90429;">
-                🍗 附餐選擇
-                <span class="limit-hint">已選 <span id="side-count">0</span> / 3 份</span>
-            </div>
-            <div id="sides-list-container"></div>
-        </div>
-
-        <div class="modal-qty-box">
-            <button class="qty-btn" onclick="changeModalQty(-1)">-</button>
-            <span id="modal-qty" style="font-size: 20px; font-weight: bold;">1</span>
-            <button class="qty-btn" onclick="changeModalQty(1)">+</button>
-        </div>
-
-        <button class="checkout-btn" id="confirm-add-btn" onclick="confirmAddToCart()">加入購物車 ($<span id="modal-subtotal">0</span>)</button>
-    </div>
-</div>
-
-<audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
-
 <script>
     const hoursData = {{ hours | tojson }};
     
@@ -657,6 +369,9 @@
         document.getElementById('order-view').style.display = 'block';
     }
 
+    // 儲存目前拉取到的訂單狀態，避免輪詢重置畫面
+    let lastKnownStatus = '';
+
     function startStatusPolling() {
         if (statusInterval) clearInterval(statusInterval);
         statusInterval = setInterval(async () => {
@@ -671,38 +386,42 @@
                     let finishBtn = document.getElementById('finish-order-btn');
                     let cancelBtn = document.getElementById('cancel-order-btn');
 
-                    if (order.status === 'pending') {
-                        statusText.innerText = "等待店家接受訂單...";
-                        cancelBtn.style.display = 'block';
-                        ackBtn.style.display = 'none';
-                        finishBtn.style.display = 'none';
-                    } else if (order.status === 'accepted') {
-                        statusText.innerText = "店家已接單，正在準備餐點中...";
-                        cancelBtn.style.display = 'none';
-                        ackBtn.style.display = 'none';
-                        finishBtn.style.display = 'none';
-                    } else if (order.status === 'ready') {
-                        statusText.innerText = "餐點已製作完成！請前往取餐";
-                        cancelBtn.style.display = 'none';
-                        ackBtn.style.display = 'block'; // 顯示「了解，過去取餐」
-                        finishBtn.style.display = 'none';
-                        if (!isCompletedAlertTriggered) {
-                            alertAudio.play().catch(e => console.log('音效播放受阻:', e));
-                            isCompletedAlertTriggered = true;
+                    // 如果後台狀態有變，或者第一次載入，才更新按鈕顯示狀態
+                    if (order.status !== lastKnownStatus) {
+                        lastKnownStatus = order.status;
+
+                        if (order.status === 'pending') {
+                            statusText.innerText = "等待店家接受訂單...";
+                            cancelBtn.style.display = 'block';
+                            ackBtn.style.display = 'none';
+                            finishBtn.style.display = 'none';
+                        } else if (order.status === 'accepted') {
+                            statusText.innerText = "店家已接單，正在準備餐點中...";
+                            cancelBtn.style.display = 'none';
+                            ackBtn.style.display = 'none';
+                            finishBtn.style.display = 'none';
+                        } else if (order.status === 'ready') {
+                            statusText.innerText = "餐點已製作完成！請前往取餐";
+                            cancelBtn.style.display = 'none';
+                            ackBtn.style.display = 'block'; // 顯示「了解，過去取餐」
+                            finishBtn.style.display = 'none';
+                            if (!isCompletedAlertTriggered) {
+                                alertAudio.play().catch(e => console.log('音效播放受阻:', e));
+                                isCompletedAlertTriggered = true;
+                            }
+                        } else if (order.status === 'acknowledged') {
+                            statusText.innerText = "已知悉，正在前往取餐路上...";
+                            cancelBtn.style.display = 'none';
+                            ackBtn.style.display = 'none';
+                            finishBtn.style.display = 'block'; // 顯示「取餐完成 (返回點餐)」
+                        } else if (order.status === 'completed') {
+                            clearInterval(statusInterval);
+                            alertAudio.pause();
+                            alertAudio.currentTime = 0;
+                            document.getElementById('tracker-view').style.display = 'none';
+                            document.getElementById('order-view').style.display = 'block';
+                            alert('感謝您的光臨！');
                         }
-                    } else if (order.status === 'acknowledged') {
-                        statusText.innerText = "已知悉，正在前往取餐路上...";
-                        cancelBtn.style.display = 'none';
-                        ackBtn.style.display = 'none';
-                        finishBtn.style.display = 'block'; // 顯示「取餐完成 (返回點餐)」
-                    } else if (order.status === 'completed') {
-                        // 修正：當訂單被標記為完成後，清除輪詢並安全返回點餐頁面
-                        clearInterval(statusInterval);
-                        alertAudio.pause();
-                        alertAudio.currentTime = 0;
-                        document.getElementById('tracker-view').style.display = 'none';
-                        document.getElementById('order-view').style.display = 'block';
-                        alert('感謝您的光臨！');
                     }
                 }
             } catch (e) { console.error(e); }
@@ -711,7 +430,17 @@
 
     async function acknowledgeOrder() {
         if (!currentOrderId) return;
-        await fetch(`/api/order/acknowledge`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
+        // 立即在前端切換畫面狀態，避免等待 3 秒輪詢造成按鈕點擊失效
+        lastKnownStatus = 'acknowledged';
+        document.getElementById('track-status').innerText = "已知悉，正在前往取餐路上...";
+        document.getElementById('acknowledge-btn').style.display = 'none';
+        document.getElementById('finish-order-btn').style.display = 'block';
+
+        await fetch(`/api/order/acknowledge`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ order_id: currentOrderId }) 
+        });
     }
 
     async function finishOrder() {
@@ -720,10 +449,10 @@
         alertAudio.currentTime = 0;
         await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: currentOrderId }) });
         
-        // 點擊後直接切換回點餐畫面，不強制整個頁面重整
         document.getElementById('tracker-view').style.display = 'none';
         document.getElementById('order-view').style.display = 'block';
         currentOrderId = null;
+        lastKnownStatus = '';
     }
 
     async function cancelMyOrder() {
@@ -739,5 +468,3 @@
         }
     }
 </script>
-</body>
-</html>
