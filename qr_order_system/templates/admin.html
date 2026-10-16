@@ -29,8 +29,10 @@
         
         .hours-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .hours-row label { width: 60px; font-weight: bold; }
-        
         details summary { font-size: 18px; font-weight: bold; color: #111; cursor: pointer; padding: 5px 0; outline: none; }
+        
+        .badge-type-booking { background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-type-immediate { background: #fef3c7; color: #d97706; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -58,7 +60,7 @@
         </div>
     </div>
 
-    <!-- 1. 即時訂單列表（置頂：待處理、製作中、已完成） -->
+    <!-- 即時訂單列表 -->
     <div class="card" style="border: 2px solid #2b9348;">
         <h2>📋 即時訂單列表</h2>
         
@@ -67,16 +69,24 @@
         <table>
             <thead>
                 <tr>
+                    <th>類型</th>
                     <th>桌號</th>
                     <th>電話末四碼</th>
                     <th>餐點內容與規格</th>
                     <th>總金額</th>
-                    <th>操作</th>
+                    <th>操作 (即時單可選擇回報等候時間)</th>
                 </tr>
             </thead>
             <tbody>
                 {% for o in orders %}
                 <tr>
+                    <td>
+                        {% if o.order_type == '預約單' %}
+                            <span class="badge-type-booking">📅 預約 {{ o.booking_time }}</span>
+                        {% else %}
+                            <span class="badge-type-immediate">⚡ 即時單</span>
+                        {% endif %}
+                    </td>
                     <td><b>{{ o.table }} 號桌</b></td>
                     <td><b>{{ o.phone_last4 }}</b></td>
                     <td>
@@ -88,12 +98,22 @@
                     </td>
                     <td style="color: #d90429; font-weight: bold;">${{ o.total }}</td>
                     <td>
-                        <button class="btn-success" onclick="acceptOrder('{{ o.id }}')">接受並出單</button>
+                        {% if o.order_type == '預約單' %}
+                            <button class="btn-success" onclick="acceptOrder('{{ o.id }}', '預約 {{ o.booking_time }} 取餐')">接受預約單</button>
+                        {% else %}
+                            <div style="font-size: 13px; margin-bottom: 4px; font-weight: bold;">回報等候時間：</div>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '5分鐘')">5分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '10分鐘')">10分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '15分鐘')">15分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '20分鐘')">20分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '25分鐘')">25分</button>
+                            <button class="btn-success" style="padding: 4px 8px; font-size: 12px;" onclick="acceptOrder('{{ o.id }}', '30分鐘')">30分</button>
+                        {% endif %}
                         <button class="btn-danger" onclick="cancelOrder('{{ o.id }}')">取消</button>
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="5" style="text-align: center; color: #777;">目前沒有待處理訂單</td></tr>
+                <tr><td colspan="6" style="text-align: center; color: #777;">目前沒有待處理訂單</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -103,9 +123,10 @@
         <table>
             <thead>
                 <tr>
+                    <th>類型</th>
                     <th>桌號</th>
                     <th>電話末四碼</th>
-                    <th>當前狀態 / 預估時間</th>
+                    <th>當前狀態 / 回報時間</th>
                     <th>餐點內容與規格</th>
                     <th>總金額</th>
                     <th>操作</th>
@@ -114,6 +135,13 @@
             <tbody>
                 {% for o in accepted_orders %}
                 <tr>
+                    <td>
+                        {% if o.order_type == '預約單' %}
+                            <span class="badge-type-booking">📅 預約</span>
+                        {% else %}
+                            <span class="badge-type-immediate">⚡ 即時</span>
+                        {% endif %}
+                    </td>
                     <td><b>{{ o.table }} 號桌</b></td>
                     <td><b>{{ o.phone_last4 }}</b></td>
                     <td>
@@ -139,7 +167,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" style="text-align: center; color: #777;">目前沒有製作中的訂單</td></tr>
+                <tr><td colspan="7" style="text-align: center; color: #777;">目前沒有製作中的訂單</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -149,6 +177,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>類型</th>
                     <th>桌號</th>
                     <th>電話末四碼</th>
                     <th>餐點內容與規格</th>
@@ -158,6 +187,13 @@
             <tbody>
                 {% for o in completed_orders %}
                 <tr>
+                    <td>
+                        {% if o.order_type == '預約單' %}
+                            <span class="badge-type-booking">📅 預約</span>
+                        {% else %}
+                            <span class="badge-type-immediate">⚡ 即時</span>
+                        {% endif %}
+                    </td>
                     <td>{{ o.table }} 號桌</td>
                     <td><b>{{ o.phone_last4 }}</b></td>
                     <td>
@@ -170,13 +206,13 @@
                     <td style="font-weight: bold;">${{ o.total }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="4" style="text-align: center; color: #777;">目前尚無已完成訂單</td></tr>
+                <tr><td colspan="5" style="text-align: center; color: #777;">目前尚無已完成訂單</td></tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <!-- 2. 營業時間與打烊控制 -->
+    <!-- 營業時間與打烊控制 -->
     <div class="card">
         <h2>⏰ 營業時間與打烊控制</h2>
         <div style="margin-bottom: 15px; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
@@ -199,7 +235,7 @@
         </form>
     </div>
 
-    <!-- 3. 優惠專區管理 -->
+    <!-- 優惠專區管理 -->
     <div class="card" style="background: #fff9db; border: 1px solid #fcc419;">
         <h2>🔥 優惠專區管理</h2>
         <form onsubmit="addPromoItem(event)" style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px;">
@@ -221,7 +257,7 @@
         </ul>
     </div>
 
-    <!-- 4. 菜單品項售罄管理（可收合） -->
+    <!-- 菜單品項售罄管理 -->
     <div class="card">
         <details>
             <summary>🍔 菜單品項售罄管理（點擊展開 / 收合）</summary>
@@ -257,7 +293,6 @@
     </div>
 </div>
 
-<!-- 後台新訂單提醒音效 -->
 <audio id="admin-alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
@@ -265,22 +300,16 @@
     const adminAlertAudio = document.getElementById('admin-alert-sound');
 
     window.addEventListener('load', () => {
-        if (lastPendingCount > 0) {
-            playAlertSound();
-        }
+        if (lastPendingCount > 0) playAlertSound();
     });
 
     document.addEventListener('click', () => {
-        if (lastPendingCount > 0 && adminAlertAudio.paused) {
-            playAlertSound();
-        }
+        if (lastPendingCount > 0 && adminAlertAudio.paused) playAlertSound();
     }, { once: true });
 
     function playAlertSound() {
         adminAlertAudio.currentTime = 0;
-        adminAlertAudio.play().catch(err => {
-            console.log("等待使用者互動後才能自動播放聲音");
-        });
+        adminAlertAudio.play().catch(err => {});
     }
 
     function stopAlertSound() {
@@ -293,12 +322,9 @@
         try {
             let res = await fetch('/api/admin/check_orders');
             let data = await res.json();
-            
             if (data.pending_count > lastPendingCount) {
                 playAlertSound();
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
+                setTimeout(() => location.reload(), 1000);
             } else if (data.pending_count === 0) {
                 stopAlertSound();
             }
@@ -310,18 +336,9 @@
         let isChecked = document.getElementById('force-close-chk').checked;
         let hoursData = gatherHoursData();
         hoursData.force_close = isChecked;
-
-        let res = await fetch('/api/hours/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hoursData)
-        });
+        let res = await fetch('/api/hours/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hoursData) });
         let data = await res.json();
-        if (data.success) {
-            alert(isChecked ? '已切換為強制打烊狀態！' : '已恢復營業狀態！');
-        } else {
-            alert('操作失敗：' + data.message);
-        }
+        if (data.success) alert(isChecked ? '已切換為強制打烊狀態！' : '已恢復營業狀態！');
     }
 
     function gatherHoursData() {
@@ -340,64 +357,33 @@
     async function saveHours(event) {
         event.preventDefault();
         let hoursData = gatherHoursData();
-        let res = await fetch('/api/hours/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(hoursData)
-        });
+        let res = await fetch('/api/hours/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hoursData) });
         let data = await res.json();
-        if (data.success) {
-            alert('營業時間儲存成功！');
-            location.reload();
-        } else {
-            alert('儲存失敗：' + data.message);
-        }
+        if (data.success) { alert('營業時間儲存成功！'); location.reload(); }
     }
 
     async function addPromoItem(event) {
         event.preventDefault();
         let name = document.getElementById('promo-name').value.trim();
         let price = document.getElementById('promo-price').value.trim();
-
-        let res = await fetch('/api/promo/add', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, price })
-        });
+        let res = await fetch('/api/promo/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, price }) });
         let data = await res.json();
-        if (data.success) {
-            alert('優惠品項新增成功！');
-            location.reload();
-        } else {
-            alert('新增失敗：' + data.message);
-        }
+        if (data.success) { alert('優惠品項新增成功！'); location.reload(); }
     }
 
     async function deletePromo(itemId) {
         if (!confirm('確定要刪除這個優惠品項嗎？')) return;
-        let res = await fetch('/api/promo/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
+        let res = await fetch('/api/promo/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId }) });
         let data = await res.json();
-        if (data.success) {
-            alert('已成功刪除');
-            location.reload();
-        } else {
-            alert('刪除失敗：' + data.message);
-        }
+        if (data.success) { alert('已成功刪除'); location.reload(); }
     }
 
-    async function acceptOrder(orderId) {
+    async function acceptOrder(orderId, estMinutes) {
         stopAlertSound();
-
-        let estTime = prompt('請輸入預估取餐時間：', '15分鐘');
-        if (!estTime) return;
         let res = await fetch('/api/order/accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId, est_time: estTime })
+            body: JSON.stringify({ order_id: orderId, est_minutes: estMinutes })
         });
         let data = await res.json();
         if (data.success) { location.reload(); }
@@ -405,52 +391,29 @@
     }
 
     async function readyOrder(orderId) {
-        let res = await fetch('/api/order/ready', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
+        let res = await fetch('/api/order/ready', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
         let data = await res.json();
-        if (data.success) { 
-            alert('已發送取餐通知給顧客！');
-            location.reload(); 
-        } else { alert('操作失敗'); }
+        if (data.success) { alert('已發送取餐通知給顧客！'); location.reload(); }
     }
 
     async function completeOrder(orderId) {
-        let res = await fetch('/api/order/complete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
+        let res = await fetch('/api/order/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
         let data = await res.json();
         if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
     }
 
     async function cancelOrder(orderId) {
         stopAlertSound();
-
         if (!confirm('確定取消此訂單？')) return;
-        let res = await fetch('/api/order/cancel', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId })
-        });
+        let res = await fetch('/api/order/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
         let data = await res.json();
         if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
     }
 
     async function toggleSoldOut(itemId) {
-        let res = await fetch('/api/menu/toggle_soldout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item_id: itemId })
-        });
+        let res = await fetch('/api/menu/toggle_soldout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId }) });
         let data = await res.json();
         if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
     }
 </script>
 </body>
