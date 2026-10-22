@@ -120,6 +120,11 @@ def save_hours(hours_data):
     with open(HOURS_FILE, "w", encoding="utf-8") as f:
         json.dump(hours_data, f, ensure_ascii=False, indent=4)
 
+def get_customer_order_count(phone):
+    """ 計算特定電話的總歷史訂購次數（包含待處理、製作中與已完成） """
+    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
+    return sum(1 for o in all_orders if str(o.get("phone")) == str(phone))
+
 @app.route("/")
 def index():
     return '<h1>酷嗑斯美式炸雞</h1><p><a href="/menu?table=1">前往點餐</a> | <a href="/admin">後台</a></p>'
@@ -140,14 +145,20 @@ def admin_page():
             qty = item.get("quantity", 1)
             item_stats[name] = item_stats.get(name, 0) + qty
 
+    # 幫每筆訂單計算該電話累計訂購次數
+    def attach_order_count(order_list):
+        for o in order_list:
+            o["order_count"] = get_customer_order_count(o.get("phone"))
+        return order_list
+
     return render_template(
         "admin.html",
         menu=load_menu(),
         hours=load_hours(),
-        orders=ORDERS,
-        accepted_orders=ACCEPTED_ORDERS,
-        completed_orders=COMPLETED_ORDERS,
-        cancelled_orders=CANCELLED_ORDERS,
+        orders=attach_order_count(list(ORDERS)),
+        accepted_orders=attach_order_count(list(ACCEPTED_ORDERS)),
+        completed_orders=attach_order_count(list(COMPLETED_ORDERS)),
+        cancelled_orders=attach_order_count(list(CANCELLED_ORDERS)),
         total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
         item_stats=item_stats
     )
@@ -226,7 +237,7 @@ def place_order():
             return jsonify({"success": False, "message": "無效資料"}), 400
 
         order_id = str(int(time.time() * 1000))
-        phone = str(data.get("phone", "0000000000"))
+        phone = str(data.get("phone", "0000000000")).strip()
         booking_time = data.get("booking_time", "").strip()
         
         taiwan_timezone = timezone(timedelta(hours=8))
@@ -258,6 +269,7 @@ def place_order():
 @app.route("/api/order/status", methods=["GET"])
 def check_order_status():
     order_id = request.args.get("order_id")
+    phone = request.args.get("phone")
     phone_last4 = request.args.get("phone_last4")
     all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS + CANCELLED_ORDERS
     
@@ -265,7 +277,14 @@ def check_order_status():
         for o in all_orders:
             if str(o.get("id")) == str(order_id):
                 return jsonify({"success": True, "order": o})
-                
+
+    # 優先使用完整電話查詢，若無則降級回末四碼查詢
+    if phone:
+        matched = [o for o in all_orders if str(o.get("phone")) == str(phone)]
+        if matched:
+            matched_sorted = sorted(matched, key=lambda x: str(x.get("id", "")), reverse=True)
+            return jsonify({"success": True, "orders": matched_sorted})
+
     if phone_last4:
         matched = [o for o in all_orders if str(o.get("phone_last4")) == str(phone_last4)]
         if matched:
@@ -298,7 +317,7 @@ def accept_order():
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(2)
                 s.connect((PRINTER_IP, PRINTER_PORT))
-                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞 [{found['order_type']}]\n桌號: {found['table']}\n末四碼: {found['phone_last4']}\n時間: {found.get('created_at','')}\n".encode("big5", errors="ignore")
+                print_data = b"\x1b\x40" + f"酷嗑斯美式炸雞 [{found['order_type']}]\n桌號: {found['table']}\n電話: {found['phone']}\n取餐末四碼: {found['phone_last4']}\n時間: {found.get('created_at','')}\n".encode("big5", errors="ignore")
                 if found['booking_time']:
                     print_data += f"預約取餐: {found['booking_time']}\n".encode("big5", errors="ignore")
                 for item in found['food_list']:
