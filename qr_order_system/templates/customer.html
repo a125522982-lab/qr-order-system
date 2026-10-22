@@ -285,16 +285,33 @@
 <audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
-    const latestHoursData = {{ hours | tojson }};
+    let latestHoursData = null;
 
-    function checkIsOpenNow() {
+    // 🔥 每次都透過 API 向後台即時抓取最新營業時間設定
+    async function fetchLatestHours() {
+        try {
+            let res = await fetch('/api/hours');
+            let data = await res.json();
+            if (data) {
+                latestHoursData = data;
+            }
+        } catch (e) {
+            console.error("無法取得最新營業時間", e);
+        }
+    }
+
+    async function checkIsOpenNowAsync() {
+        await fetchLatestHours();
+        if (!latestHoursData) return true; // 若萬一斷線預設開放，避免影響生意
+
+        if (latestHoursData.force_close) return false;
+
         const now = new Date();
         const dayIdx = now.getDay();
         const daysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const dayKey = daysMap[dayIdx];
 
-        if (latestHoursData && latestHoursData.force_close) return false;
-        if (!latestHoursData || !latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return false;
+        if (!latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return false;
 
         let openStr = latestHoursData[dayKey].open || "11:30";
         let closeStr = latestHoursData[dayKey].close || "20:00";
@@ -309,12 +326,15 @@
         return currentTotalM >= openTotalM && currentTotalM <= closeTotalM;
     }
 
-    function generateBookingTimes() {
+    async function generateBookingTimes() {
+        if (!latestHoursData) await fetchLatestHours();
+        if (!latestHoursData) return;
+
         const now = new Date();
         const dayIdx = now.getDay();
         const daysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const dayKey = daysMap[dayIdx];
-        if (!latestHoursData || !latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return;
+        if (!latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return;
 
         let closeStr = latestHoursData[dayKey].close || "20:00";
         let [closeH, closeM] = closeStr.split(':').map(Number);
@@ -341,8 +361,10 @@
         if (!isBooking) selectEl.value = "";
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-        if (!checkIsOpenNow()) {
+    // 🔥 網頁載入時立即向後台同步營業時間並判斷狀態
+    window.addEventListener('DOMContentLoaded', async () => {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) {
             document.getElementById('closed-banner').style.display = 'block';
             document.getElementById('order-view').style.display = 'none';
         } else {
@@ -378,8 +400,14 @@
         });
     }
 
-    function openOptionModal(id, name, price, category) {
-        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); return; }
+    async function openOptionModal(id, name, price, category) {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) { 
+            document.getElementById('closed-banner').style.display = 'block';
+            document.getElementById('order-view').style.display = 'none';
+            alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); 
+            return; 
+        }
         currentModalItem = { 
             id: id, name: name, price: price, qty: 1, pepper: '要胡椒', spicy: '不辣', category: category,
             sauces: { "番茄醬": 0, "起司醬": 0, "香菜檸檬醬": 0 }, sides: {}
@@ -509,8 +537,14 @@
     }
     function updateModalSubtotal() { document.getElementById('modal-subtotal').innerText = currentModalItem.price * currentModalItem.qty; }
 
-    function confirmAddToCart() {
-        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，無法加入購物車！'); return; }
+    async function confirmAddToCart() {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) { 
+            document.getElementById('closed-banner').style.display = 'block';
+            document.getElementById('order-view').style.display = 'none';
+            alert('🔴 目前為非營業時間或已打烊，無法加入購物車！'); 
+            return; 
+        }
         let specText = "";
         let isOnlyQty = (currentModalItem.category === 'drink' || currentModalItem.category === 'promo' || currentModalItem.name.includes('煉香花月圓') || currentModalItem.name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (currentModalItem.name.includes('炸全雞'));
@@ -591,8 +625,14 @@
         totalAmountEl.innerText = total;
     }
 
-    function promptCheckout() {
-        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); return; }
+    async function promptCheckout() {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) { 
+            document.getElementById('closed-banner').style.display = 'block';
+            document.getElementById('order-view').style.display = 'none';
+            alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); 
+            return; 
+        }
         if (cart.length === 0) { alert('購物車是空的，請先選擇餐點！'); return; }
         
         let isBooking = document.querySelector('input[name="order-type-mode"]:checked').value === 'booking';
@@ -736,7 +776,6 @@
                     });
 
                 } else {
-                    // 若沒有進行中的訂單，停止音效並切換回歷史紀錄顯示
                     alertAudio.pause();
                     alertAudio.currentTime = 0;
                     if (statusInterval) clearInterval(statusInterval);
@@ -805,8 +844,9 @@
         container.innerHTML = html;
     }
 
-    function reorderSameItems(itemsJsonStr) {
-        if (!checkIsOpenNow()) {
+    async function reorderSameItems(itemsJsonStr) {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) {
             alert('🔴 目前為非營業時間或已打烊，無法進行點餐！');
             return;
         }
@@ -849,18 +889,20 @@
         }
     }
 
-    function backToMenuOnly() {
+    async function backToMenuOnly() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
         alertAudio.currentTime = 0;
         document.getElementById('history-view').style.display = 'none';
         document.getElementById('tracker-view').style.display = 'none';
 
-        if (!checkIsOpenNow()) {
+        let isOpen = await checkIsOpenNowAsync();
+        if (!isOpen) {
             document.getElementById('closed-banner').style.display = 'block';
             document.getElementById('order-view').style.display = 'none';
             alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！');
         } else {
+            document.getElementById('closed-banner').style.display = 'none';
             document.getElementById('order-view').style.display = 'block';
         }
     }
@@ -879,7 +921,6 @@
         let res = await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
         let data = await res.json();
         if (data.success) {
-            // 立即向伺服器重新抓取狀態，確保畫面切換至歷史訂單，不再跳回原狀態
             fetchAndRenderOrders();
         } else {
             alert('結案失敗');
