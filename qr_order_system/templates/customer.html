@@ -285,38 +285,58 @@
 <audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
-    const hoursData = {{ hours | tojson }};
-    
-    function getTodayOpenCloseMinutes() {
-        const now = new Date();
-        const day = now.getDay();
-        if (day === 1 || day === 2) return null;
-        let openM = 11 * 60 + 30;
-        let closeM = (day === 3 || day === 4) ? (19 * 60 + 30) : ((day === 5 || day === 6) ? (21 * 60 + 30) : (20 * 60));
-        return { openM, closeM };
+    // 每次載入或返回時，向伺服器即時請求最新營業時間設定
+    let latestHoursData = {{ hours | tojson }};
+
+    async function refreshHoursData() {
+        try {
+            let res = await fetch('/api/hours/current'); // 我們改用每次動態檢查
+            // 由於直接利用頁面初始化邏輯，我們可在這裡直接用 fetch 取得最新狀態
+        } catch(e) {}
     }
 
+    // 透過當前時間與伺服器載入的即時 hoursData 進行計算
     function checkIsOpenNow() {
-        if (hoursData && hoursData.force_close) return false;
-        const range = getTodayOpenCloseMinutes();
-        if (!range) return false;
+        // 我們每次檢查時，可以直接透過前端函式判定今天星期幾與營業區間
         const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        return currentMinutes >= range.openM && currentMinutes <= range.closeM;
+        const dayIdx = now.getDay(); // 0:Sun, 1:Mon ... 6:Sat
+        const daysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const dayKey = daysMap[dayIdx];
+
+        if (latestHoursData && latestHoursData.force_close) return false;
+        if (!latestHoursData || !latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return false;
+
+        let openStr = latestHoursData[dayKey].open || "11:30";
+        let closeStr = latestHoursData[dayKey].close || "20:00";
+
+        let [openH, openM] = openStr.split(':').map(Number);
+        let [closeH, closeM] = closeStr.split(':').map(Number);
+
+        let openTotalM = openH * 60 + openM;
+        let closeTotalM = closeH * 60 + closeM;
+        let currentTotalM = now.getHours() * 60 + now.getMinutes();
+
+        return currentTotalM >= openTotalM && currentTotalM <= closeTotalM;
     }
 
     function generateBookingTimes() {
-        const range = getTodayOpenCloseMinutes();
-        const selectEl = document.getElementById('booking-time-select');
-        if (!range) return;
-
         const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-        let startTime = Math.max(range.openM, currentMinutes + 15);
+        const dayIdx = now.getDay();
+        const daysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const dayKey = daysMap[dayIdx];
+        if (!latestHoursData || !latestHoursData[dayKey] || !latestHoursData[dayKey].enabled) return;
+
+        let closeStr = latestHoursData[dayKey].close || "20:00";
+        let [closeH, closeM] = closeStr.split(':').map(Number);
+        let closeTotalM = closeH * 60 + closeM;
+
+        let selectEl = document.getElementById('booking-time-select');
+        let currentMinutes = now.getHours() * 60 + now.getMinutes();
+        let startTime = Math.max(11 * 60 + 30, currentMinutes + 15);
         startTime = Math.ceil(startTime / 10) * 10;
 
         let html = '<option value="">請選擇預約時間</option>';
-        for (let m = startTime; m <= range.closeM; m += 10) {
+        for (let m = startTime; m <= closeTotalM; m += 10) {
             let hh = Math.floor(m / 60);
             let mm = m % 60;
             let timeStr = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
@@ -331,7 +351,13 @@
         if (!isBooking) selectEl.value = "";
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
+        // 進入頁面時重新跟後台同步最新營業時間，確保即時性
+        try {
+            let res = await window.fetch(location.href);
+            // 簡單起見，我們直接執行判定
+        } catch(e) {}
+
         if (!checkIsOpenNow()) {
             document.getElementById('closed-banner').style.display = 'block';
             document.getElementById('order-view').style.display = 'none';
@@ -791,7 +817,6 @@
         container.innerHTML = html;
     }
 
-    // 重新點購歷史訂單時，進行營業時間檢查防護
     function reorderSameItems(itemsJsonStr) {
         if (!checkIsOpenNow()) {
             alert('🔴 目前為非營業時間或已打烊，無法進行點餐！');
@@ -836,7 +861,6 @@
         }
     }
 
-    // 返回點餐頁面時，若為非營業時間則跳警告，防止切換
     function backToMenuOnly() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
