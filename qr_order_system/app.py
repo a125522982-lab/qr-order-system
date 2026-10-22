@@ -177,9 +177,11 @@ def get_customer_order_count(phone):
         return MEMBERS_DB[phone_str]["order_count"]
     return 0
 
-def is_currently_open():
-    hours = load_hours()
-    if hours.get("force_close"):
+def is_currently_open(hours_data=None):
+    if hours_data is None:
+        hours_data = load_hours()
+        
+    if hours_data.get("force_close"):
         return False
 
     taiwan_tz = timezone(timedelta(hours=8))
@@ -187,7 +189,7 @@ def is_currently_open():
     days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     day_key = days_map[now.weekday()]
     
-    day_config = hours.get(day_key, {})
+    day_config = hours_data.get(day_key, {})
     if not day_config.get("enabled"):
         return False
         
@@ -229,6 +231,11 @@ def customer_menu():
     menu = load_menu()
     hours = load_hours()
     return render_template("customer.html", table=table, menu=menu, hours=hours)
+
+# 🔥 新增：讓客戶端隨時取得最新營業時間的 API
+@app.route("/api/hours", methods=["GET"])
+def get_hours_api():
+    return jsonify(load_hours())
 
 @app.route("/admin")
 @login_required
@@ -335,6 +342,7 @@ def delete_promo_item():
 @app.route("/api/order", methods=["POST"])
 def place_order():
     try:
+        # 下單時以最新讀取的營業時間為準
         if not is_currently_open():
             return jsonify({"success": False, "message": "目前為非營業時間或已打烊，暫停線上點餐！"}), 403
 
