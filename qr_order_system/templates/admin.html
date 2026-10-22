@@ -20,8 +20,14 @@
         /* 行動端卡片化訂單樣式 */
         .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
-        .order-card-title { font-size: 18px; font-weight: bold; color: #d90429; }
         .order-card-body { font-size: 14px; line-height: 1.5; color: #444; }
+        
+        /* 電話號碼與末四碼黃色標籤樣式 */
+        .phone-display { font-size: 15px; font-weight: bold; color: #333; }
+        .phone-last4-highlight { background: #ffea00; color: #000; padding: 2px 6px; border-radius: 4px; border: 1px solid #f59f00; font-size: 16px; font-weight: bold; margin-left: 2px; }
+        
+        /* 常客標籤 */
+        .vip-tag { display: inline-block; background: #e7f5ff; color: #1971c2; border: 1px solid #a5d8ff; font-size: 12px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
         
         .btn-group-time { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
         
@@ -82,10 +88,22 @@
                         {% endif %}
                         <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
                     </div>
-                    <div class="order-card-title">末四碼: {{ o.phone_last4 }}</div>
+                    <div>
+                        <!-- 完整電話與末四碼黃色高亮標籤 -->
+                        <span class="phone-display">
+                            {{ o.phone[:-4] }}<span class="phone-last4-highlight">{{ o.phone_last4 }}</span>
+                        </span>
+                    </div>
                 </div>
                 <div class="order-card-body">
-                    <ul style="padding-left: 18px; margin: 5px 0;">
+                    <!-- 常客比對標籤 -->
+                    {% if o.order_count and o.order_count > 1 %}
+                        <div><span class="vip-tag">⭐ 常客 (已訂購 {{ o.order_count }} 次)</span></div>
+                    {% else %}
+                        <div><span class="vip-tag" style="background: #f1f3f5; color: #495057; border-color: #dee2e6;">新顧客 (首次訂購)</span></div>
+                    {% endif %}
+
+                    <ul style="padding-left: 18px; margin: 6px 0;">
                         {% for item in o.food_list %}
                             <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
                         {% endfor %}
@@ -126,10 +144,17 @@
                         {% endif %}
                         <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
                     </div>
-                    <div class="order-card-title">末四碼: {{ o.phone_last4 }}</div>
+                    <div>
+                        <span class="phone-display">
+                            {{ o.phone[:-4] }}<span class="phone-last4-highlight">{{ o.phone_last4 }}</span>
+                        </span>
+                    </div>
                 </div>
                 <div class="order-card-body">
-                    <div style="font-size: 14px; font-weight: bold; color: #e63946;">
+                    {% if o.order_count and o.order_count > 1 %}
+                        <div><span class="vip-tag">⭐ 常客 (已訂購 {{ o.order_count }} 次)</span></div>
+                    {% endif %}
+                    <div style="font-size: 14px; font-weight: bold; color: #e63946; margin-top: 4px;">
                         狀態: {% if o.status == 'ready' %}🔔 已通知取餐{% else %}{{ o.est_time }}{% endif %}
                     </div>
                     <ul style="padding-left: 18px; margin: 5px 0;">
@@ -151,7 +176,7 @@
         {% endfor %}
     </div>
 
-    <!-- 後台新增：適合手機瀏覽的歷史訂單紀錄區塊 -->
+    <!-- 後台：歷史訂單紀錄與常客資訊 -->
     <div class="card" style="background: #ffffff;">
         <details>
             <summary>📜 查看歷史訂單紀錄 (已完成/取消 {{ completed_orders | length + cancelled_orders | length }} 筆)</summary>
@@ -170,7 +195,11 @@
                                 {% endif %}
                                 <b>{{ o.table }} 號桌</b>
                             </div>
-                            <div style="font-weight: bold; color: #333;">末四碼: {{ o.phone_last4 }}</div>
+                            <div>
+                                <span class="phone-display" style="font-size: 13px;">
+                                    {{ o.phone[:-4] }}<span class="phone-last4-highlight" style="font-size: 13px;">{{ o.phone_last4 }}</span>
+                                </span>
+                            </div>
                         </div>
                         <div class="order-card-body">
                             <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px;">
@@ -193,7 +222,11 @@
                                 <span style="font-size: 12px; color: #777;">{{ o.created_at }}</span> | 
                                 <b>{{ o.table }} 號桌</b>
                             </div>
-                            <div style="font-weight: bold; color: #777;">末四碼: {{ o.phone_last4 }}</div>
+                            <div>
+                                <span class="phone-display" style="font-size: 13px; color: #777;">
+                                    {{ o.phone[:-4] }}<span class="phone-last4-highlight" style="font-size: 13px; background: #e9ecef; border-color: #ced4da;">{{ o.phone_last4 }}</span>
+                                </span>
+                            </div>
                         </div>
                         <div class="order-card-body">
                             <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px; color: #777;">
