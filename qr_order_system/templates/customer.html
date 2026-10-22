@@ -285,21 +285,11 @@
 <audio id="customer-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
 
 <script>
-    // 每次載入或返回時，向伺服器即時請求最新營業時間設定
-    let latestHoursData = {{ hours | tojson }};
+    const latestHoursData = {{ hours | tojson }};
 
-    async function refreshHoursData() {
-        try {
-            let res = await fetch('/api/hours/current'); // 我們改用每次動態檢查
-            // 由於直接利用頁面初始化邏輯，我們可在這裡直接用 fetch 取得最新狀態
-        } catch(e) {}
-    }
-
-    // 透過當前時間與伺服器載入的即時 hoursData 進行計算
     function checkIsOpenNow() {
-        // 我們每次檢查時，可以直接透過前端函式判定今天星期幾與營業區間
         const now = new Date();
-        const dayIdx = now.getDay(); // 0:Sun, 1:Mon ... 6:Sat
+        const dayIdx = now.getDay();
         const daysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const dayKey = daysMap[dayIdx];
 
@@ -351,13 +341,7 @@
         if (!isBooking) selectEl.value = "";
     }
 
-    window.addEventListener('DOMContentLoaded', async () => {
-        // 進入頁面時重新跟後台同步最新營業時間，確保即時性
-        try {
-            let res = await window.fetch(location.href);
-            // 簡單起見，我們直接執行判定
-        } catch(e) {}
-
+    window.addEventListener('DOMContentLoaded', () => {
         if (!checkIsOpenNow()) {
             document.getElementById('closed-banner').style.display = 'block';
             document.getElementById('order-view').style.display = 'none';
@@ -751,15 +735,19 @@
                         }
                     });
 
-                } else if (allOrders.length > 0) {
-                    alertAudio.pause();
-                    alertAudio.currentTime = 0;
-                    renderHistoryList(allOrders, activePhone);
                 } else {
+                    // 若沒有進行中的訂單，停止音效並切換回歷史紀錄顯示
                     alertAudio.pause();
                     alertAudio.currentTime = 0;
-                    alert('找不到該電話對應的訂單紀錄');
-                    clearInterval(statusInterval);
+                    if (statusInterval) clearInterval(statusInterval);
+                    
+                    let resHistory = await fetch(`/api/order/status?phone=${activePhone}`);
+                    let dataHistory = await resHistory.json();
+                    if (dataHistory.success && dataHistory.orders) {
+                        renderHistoryList(dataHistory.orders, activePhone);
+                    } else {
+                        backToMenuOnly();
+                    }
                 }
             }
         } catch (e) { console.error(e); }
@@ -794,7 +782,7 @@
 
         let container = document.getElementById('history-list-container');
         let html = '';
-        ordersList.forEach((order, index) => {
+        ordersList.forEach((order) => {
             let itemsHtml = '';
             (order.food_list || []).forEach(i => {
                 itemsHtml += `<li>${i.name} x ${i.quantity}</li>`;
@@ -888,8 +876,14 @@
     async function finishOrder(orderId) {
         alertAudio.pause();
         alertAudio.currentTime = 0;
-        await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
-        fetchAndRenderOrders();
+        let res = await fetch(`/api/order/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
+        let data = await res.json();
+        if (data.success) {
+            // 立即向伺服器重新抓取狀態，確保畫面切換至歷史訂單，不再跳回原狀態
+            fetchAndRenderOrders();
+        } else {
+            alert('結案失敗');
+        }
     }
 
     async function cancelMyOrder(orderId) {
