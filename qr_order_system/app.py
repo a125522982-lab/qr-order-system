@@ -116,12 +116,19 @@ def save_hours(hours_data):
     save_json_file(HOURS_FILE, hours_data)
 
 def load_orders_db():
-    data = load_json_file(ORDERS_FILE, {"ORDERS": [], "ACCEPTED_ORDERS": [], "COMPLETED_ORDERS": [], "CANCELLED_ORDERS": []})
+    data = load_json_file(ORDERS_FILE, {
+        "ORDERS": [], 
+        "ACCEPTED_ORDERS": [], 
+        "COMPLETED_ORDERS": [], 
+        "CANCELLED_ORDERS": [],
+        "MEMBERS": {}
+    })
     return (
         data.get("ORDERS", []),
         data.get("ACCEPTED_ORDERS", []),
         data.get("COMPLETED_ORDERS", []),
-        data.get("CANCELLED_ORDERS", [])
+        data.get("CANCELLED_ORDERS", []),
+        data.get("MEMBERS", {})
     )
 
 def save_orders_db():
@@ -129,22 +136,42 @@ def save_orders_db():
         "ORDERS": ORDERS,
         "ACCEPTED_ORDERS": ACCEPTED_ORDERS,
         "COMPLETED_ORDERS": COMPLETED_ORDERS,
-        "CANCELLED_ORDERS": CANCELLED_ORDERS
+        "CANCELLED_ORDERS": CANCELLED_ORDERS,
+        "MEMBERS": MEMBERS_DB
     }
     save_json_file(ORDERS_FILE, data)
 
-ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS = load_orders_db()
+ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS, MEMBERS_DB = load_orders_db()
+
+def register_or_update_member(phone, total_spent_delta, created_at_str):
+    """ 獨立且永久儲存會員資料 """
+    phone = str(phone).strip()
+    if len(phone) != 10:
+        return
+    if phone not in MEMBERS_DB:
+        MEMBERS_DB[phone] = {
+            "phone": phone,
+            "first_seen": created_at_str,
+            "order_count": 0,
+            "total_spent": 0
+        }
+    MEMBERS_DB[phone]["order_count"] += 1
+    MEMBERS_DB[phone]["total_spent"] += int(total_spent_delta)
+    save_orders_db()
+
+def get_customer_order_count(phone):
+    phone_str = str(phone)
+    if phone_str in MEMBERS_DB:
+        return MEMBERS_DB[phone_str]["order_count"]
+    return 0
 
 def is_currently_open():
-    """ 檢查目前時間是否處於營業時間內 """
     hours = load_hours()
     if hours.get("force_close"):
         return False
 
     taiwan_tz = timezone(timedelta(hours=8))
     now = datetime.now(taiwan_tz)
-    
-    # 星期一為0, 星期日為6
     days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     day_key = days_map[now.weekday()]
     
@@ -159,30 +186,6 @@ def is_currently_open():
         return open_time <= current_time <= close_time
     except Exception:
         return True
-
-def get_customer_order_count(phone):
-    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
-    return sum(1 for o in all_orders if str(o.get("phone")) == str(phone))
-
-def get_members_list():
-    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
-    members_dict = {}
-    for o in all_orders:
-        phone = str(o.get("phone", ""))
-        if len(phone) == 10:
-            if phone not in members_dict:
-                members_dict[phone] = {
-                    "phone": phone,
-                    "first_seen": o.get("created_at", ""),
-                    "order_count": 0,
-                    "total_spent": 0
-                }
-            members_dict[phone]["order_count"] += 1
-            if o.get("status") != "cancelled":
-                members_dict[phone]["total_spent"] += int(o.get("total", 0))
-    members = list(members_dict.values())
-    members.sort(key=lambda x: x["order_count"], reverse=True)
-    return members
 
 @app.route("/")
 def index():
@@ -209,7 +212,9 @@ def admin_page():
             o["order_count"] = get_customer_order_count(o.get("phone"))
         return order_list
 
-    members = get_members_list()
+    # 轉成列表並依總消費或訂單數排序
+    members_list = list(MEMBERS_DB.values())
+    members_list.sort(key=lambda x: x["order_count"], reverse=True)
 
     return render_template(
         "admin.html",
@@ -219,7 +224,7 @@ def admin_page():
         accepted_orders=attach_order_count(list(ACCEPTED_ORDERS)),
         completed_orders=attach_order_count(list(COMPLETED_ORDERS)),
         cancelled_orders=attach_order_count(list(CANCELLED_ORDERS)),
-        members=members,
+        members=members_list,
         total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
         item_stats=item_stats
     )
@@ -293,7 +298,6 @@ def delete_promo_item():
 @app.route("/api/order", methods=["POST"])
 def place_order():
     try:
-        # 1. 後端二次安全驗證：若非營業時間直接阻擋
         if not is_currently_open():
             return jsonify({"success": False, "message": "目前為非營業時間或已打烊，暫停線上點餐！"}), 403
 
@@ -310,6 +314,7 @@ def place_order():
         
         order_type = "預約單" if booking_time else "即時單"
         est_time_display = f"預約 {booking_time} 取餐" if booking_time else "等待店家確認等候時間..."
+        total_amount = int(data.get("total", 0))
 
         new_order = {
             "id": order_id,
@@ -317,7 +322,7 @@ def place_order():
             "phone": phone,
             "phone_last4": phone[-4:],
             "food_list": data.get("items", []),
-            "total": int(data.get("total", 0)),
+            "total": total_amount,
             "status": "pending",
             "order_type": order_type,
             "booking_time": booking_time,
@@ -327,6 +332,8 @@ def place_order():
         }
 
         ORDERS.append(new_order)
+        # 登記或更新永久會員資料
+        register_or_update_member(phone, total_amount, now_str)
         save_orders_db()
         return jsonify({"success": True, "order_id": order_id})
     except Exception as e:
@@ -442,6 +449,11 @@ def cancel_order():
                 found = lst.pop(i)
                 found["status"] = "cancelled"
                 CANCELLED_ORDERS.append(found)
+                # 若取消訂單，扣除會員的消費金額與次數
+                phone_str = str(found.get("phone", ""))
+                if phone_str in MEMBERS_DB:
+                    MEMBERS_DB[phone_str]["order_count"] = max(0, MEMBERS_DB[phone_str]["order_count"] - 1)
+                    MEMBERS_DB[phone_str]["total_spent"] = max(0, MEMBERS_DB[phone_str]["total_spent"] - int(found.get("total", 0)))
                 save_orders_db()
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
