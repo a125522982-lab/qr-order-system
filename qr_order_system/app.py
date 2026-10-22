@@ -9,6 +9,7 @@ app = Flask(__name__)
 
 MENU_FILE = "menu.json"
 HOURS_FILE = "hours.json"
+ORDERS_FILE = "orders.json"
 
 PRINTER_IP = "192.168.1.100"
 PRINTER_PORT = 9100
@@ -87,38 +88,55 @@ default_hours = {
     "Sun": {"open": "11:30", "close": "20:00", "enabled": True},
 }
 
-ORDERS = []
-ACCEPTED_ORDERS = []
-COMPLETED_ORDERS = []
-CANCELLED_ORDERS = []
-
-def load_menu():
-    if not os.path.exists(MENU_FILE):
-        with open(MENU_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_menu, f, ensure_ascii=False, indent=4)
+# 檔案資料讀寫輔助函式
+def load_json_file(filename, default_val):
+    if not os.path.exists(filename):
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(default_val, f, ensure_ascii=False, indent=4)
+        return default_val
     try:
-        with open(MENU_FILE, "r", encoding="utf-8") as f:
+        with open(filename, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return default_menu
+        return default_val
+
+def save_json_file(filename, data):
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+# 載入菜單、營業時間與訂單資料
+def load_menu():
+    return load_json_file(MENU_FILE, default_menu)
 
 def save_menu(menu_data):
-    with open(MENU_FILE, "w", encoding="utf-8") as f:
-        json.dump(menu_data, f, ensure_ascii=False, indent=4)
+    save_json_file(MENU_FILE, menu_data)
 
 def load_hours():
-    if not os.path.exists(HOURS_FILE):
-        with open(HOURS_FILE, "w", encoding="utf-8") as f:
-            json.dump(default_hours, f, ensure_ascii=False, indent=4)
-    try:
-        with open(HOURS_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default_hours
+    return load_json_file(HOURS_FILE, default_hours)
 
 def save_hours(hours_data):
-    with open(HOURS_FILE, "w", encoding="utf-8") as f:
-        json.dump(hours_data, f, ensure_ascii=False, indent=4)
+    save_json_file(HOURS_FILE, hours_data)
+
+def load_orders_db():
+    data = load_json_file(ORDERS_FILE, {"ORDERS": [], "ACCEPTED_ORDERS": [], "COMPLETED_ORDERS": [], "CANCELLED_ORDERS": []})
+    return (
+        data.get("ORDERS", []),
+        data.get("ACCEPTED_ORDERS", []),
+        data.get("COMPLETED_ORDERS", []),
+        data.get("CANCELLED_ORDERS", [])
+    )
+
+def save_orders_db():
+    data = {
+        "ORDERS": ORDERS,
+        "ACCEPTED_ORDERS": ACCEPTED_ORDERS,
+        "COMPLETED_ORDERS": COMPLETED_ORDERS,
+        "CANCELLED_ORDERS": CANCELLED_ORDERS
+    }
+    save_json_file(ORDERS_FILE, data)
+
+# 初始化載入記憶體
+ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS = load_orders_db()
 
 def get_customer_order_count(phone):
     """ 計算特定電話的總歷史訂購次數（包含待處理、製作中與已完成） """
@@ -145,7 +163,6 @@ def admin_page():
             qty = item.get("quantity", 1)
             item_stats[name] = item_stats.get(name, 0) + qty
 
-    # 幫每筆訂單計算該電話累計訂購次數
     def attach_order_count(order_list):
         for o in order_list:
             o["order_count"] = get_customer_order_count(o.get("phone"))
@@ -262,6 +279,7 @@ def place_order():
         }
 
         ORDERS.append(new_order)
+        save_orders_db() # 儲存至檔案
         return jsonify({"success": True, "order_id": order_id})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -278,7 +296,6 @@ def check_order_status():
             if str(o.get("id")) == str(order_id):
                 return jsonify({"success": True, "order": o})
 
-    # 優先使用完整電話查詢，若無則降級回末四碼查詢
     if phone:
         matched = [o for o in all_orders if str(o.get("phone")) == str(phone)]
         if matched:
@@ -312,6 +329,7 @@ def accept_order():
                 found["est_time"] = f"預約 {found['booking_time']} 取餐"
             
             ACCEPTED_ORDERS.append(found)
+            save_orders_db() # 儲存至檔案
             
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -338,6 +356,7 @@ def acknowledge_order():
     for order in ACCEPTED_ORDERS:
         if str(order.get("id")) == target_id:
             order["status"] = "acknowledged"
+            save_orders_db()
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
@@ -348,6 +367,7 @@ def ready_order():
     for order in ACCEPTED_ORDERS:
         if str(order.get("id")) == target_id:
             order["status"] = "ready"
+            save_orders_db()
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
@@ -360,6 +380,7 @@ def complete_order():
             found = ACCEPTED_ORDERS.pop(i)
             found["status"] = "completed"
             COMPLETED_ORDERS.append(found)
+            save_orders_db() # 儲存至檔案
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
@@ -373,6 +394,7 @@ def cancel_order():
                 found = lst.pop(i)
                 found["status"] = "cancelled"
                 CANCELLED_ORDERS.append(found)
+                save_orders_db() # 儲存至檔案
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
