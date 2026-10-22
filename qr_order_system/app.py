@@ -88,7 +88,6 @@ default_hours = {
     "Sun": {"open": "11:30", "close": "20:00", "enabled": True},
 }
 
-# 檔案資料讀寫輔助函式
 def load_json_file(filename, default_val):
     if not os.path.exists(filename):
         with open(filename, "w", encoding="utf-8") as f:
@@ -104,7 +103,6 @@ def save_json_file(filename, data):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-# 載入菜單、營業時間與訂單資料
 def load_menu():
     return load_json_file(MENU_FILE, default_menu)
 
@@ -135,13 +133,33 @@ def save_orders_db():
     }
     save_json_file(ORDERS_FILE, data)
 
-# 初始化載入記憶體
 ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS = load_orders_db()
 
 def get_customer_order_count(phone):
-    """ 計算特定電話的總歷史訂購次數（包含待處理、製作中與已完成） """
     all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
     return sum(1 for o in all_orders if str(o.get("phone")) == str(phone))
+
+def get_members_list():
+    """ 自動從所有訂單中統計出會員清單與消費總額 """
+    all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
+    members_dict = {}
+    for o in all_orders:
+        phone = str(o.get("phone", ""))
+        if len(phone) == 10:
+            if phone not in members_dict:
+                members_dict[phone] = {
+                    "phone": phone,
+                    "first_seen": o.get("created_at", ""),
+                    "order_count": 0,
+                    "total_spent": 0
+                }
+            members_dict[phone]["order_count"] += 1
+            if o.get("status") != "cancelled":
+                members_dict[phone]["total_spent"] += int(o.get("total", 0))
+    # 轉成串單並依消費總額或訂單數排序
+    members = list(members_dict.values())
+    members.sort(key=lambda x: x["order_count"], reverse=True)
+    return members
 
 @app.route("/")
 def index():
@@ -168,6 +186,8 @@ def admin_page():
             o["order_count"] = get_customer_order_count(o.get("phone"))
         return order_list
 
+    members = get_members_list()
+
     return render_template(
         "admin.html",
         menu=load_menu(),
@@ -176,6 +196,7 @@ def admin_page():
         accepted_orders=attach_order_count(list(ACCEPTED_ORDERS)),
         completed_orders=attach_order_count(list(COMPLETED_ORDERS)),
         cancelled_orders=attach_order_count(list(CANCELLED_ORDERS)),
+        members=members,
         total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
         item_stats=item_stats
     )
@@ -279,7 +300,7 @@ def place_order():
         }
 
         ORDERS.append(new_order)
-        save_orders_db() # 儲存至檔案
+        save_orders_db()
         return jsonify({"success": True, "order_id": order_id})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
@@ -329,7 +350,7 @@ def accept_order():
                 found["est_time"] = f"預約 {found['booking_time']} 取餐"
             
             ACCEPTED_ORDERS.append(found)
-            save_orders_db() # 儲存至檔案
+            save_orders_db()
             
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -380,7 +401,7 @@ def complete_order():
             found = ACCEPTED_ORDERS.pop(i)
             found["status"] = "completed"
             COMPLETED_ORDERS.append(found)
-            save_orders_db() # 儲存至檔案
+            save_orders_db()
             return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
@@ -394,7 +415,7 @@ def cancel_order():
                 found = lst.pop(i)
                 found["status"] = "cancelled"
                 CANCELLED_ORDERS.append(found)
-                save_orders_db() # 儲存至檔案
+                save_orders_db()
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
 
