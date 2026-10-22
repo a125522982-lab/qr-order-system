@@ -7,9 +7,8 @@ from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, render_template, request, redirect, url_for, session
 
 app = Flask(__name__)
-app.secret_key = "kukes_secret_key_0522_love"  # 用於 Session 加密
+app.secret_key = "kukes_secret_key_0522_love"
 
-# 後台登入帳密設定
 ADMIN_USERNAME = "酷嗑斯"
 ADMIN_PASSWORD = "0522love"
 
@@ -149,7 +148,6 @@ def save_orders_db():
 
 ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS, MEMBERS_DB = load_orders_db()
 
-# 登入防護 Decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -205,7 +203,6 @@ def is_currently_open():
 def index():
     return '<h1>酷嗑斯美式炸雞</h1><p><a href="/menu?table=1">前往點餐</a> | <a href="/admin">後台</a></p>'
 
-# 登入頁面與邏輯
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
@@ -221,7 +218,6 @@ def login():
             
     return render_template("login.html", error=error)
 
-# 登出邏輯
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)
@@ -469,7 +465,6 @@ def ready_order():
     return jsonify({"success": False}), 404
 
 @app.route("/api/order/complete", methods=["POST"])
-@login_required
 def complete_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
