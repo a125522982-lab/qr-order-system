@@ -135,12 +135,36 @@ def save_orders_db():
 
 ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS = load_orders_db()
 
+def is_currently_open():
+    """ 檢查目前時間是否處於營業時間內 """
+    hours = load_hours()
+    if hours.get("force_close"):
+        return False
+
+    taiwan_tz = timezone(timedelta(hours=8))
+    now = datetime.now(taiwan_tz)
+    
+    # 星期一為0, 星期日為6
+    days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    day_key = days_map[now.weekday()]
+    
+    day_config = hours.get(day_key, {})
+    if not day_config.get("enabled"):
+        return False
+        
+    try:
+        open_time = datetime.strptime(day_config.get("open", "11:30"), "%H:%M").time()
+        close_time = datetime.strptime(day_config.get("close", "20:00"), "%H:%M").time()
+        current_time = now.time()
+        return open_time <= current_time <= close_time
+    except Exception:
+        return True
+
 def get_customer_order_count(phone):
     all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
     return sum(1 for o in all_orders if str(o.get("phone")) == str(phone))
 
 def get_members_list():
-    """ 自動從所有訂單中統計出會員清單與消費總額 """
     all_orders = ORDERS + ACCEPTED_ORDERS + COMPLETED_ORDERS
     members_dict = {}
     for o in all_orders:
@@ -156,7 +180,6 @@ def get_members_list():
             members_dict[phone]["order_count"] += 1
             if o.get("status") != "cancelled":
                 members_dict[phone]["total_spent"] += int(o.get("total", 0))
-    # 轉成串單並依消費總額或訂單數排序
     members = list(members_dict.values())
     members.sort(key=lambda x: x["order_count"], reverse=True)
     return members
@@ -270,6 +293,10 @@ def delete_promo_item():
 @app.route("/api/order", methods=["POST"])
 def place_order():
     try:
+        # 1. 後端二次安全驗證：若非營業時間直接阻擋
+        if not is_currently_open():
+            return jsonify({"success": False, "message": "目前為非營業時間或已打烊，暫停線上點餐！"}), 403
+
         data = request.get_json(force=True, silent=True)
         if not data:
             return jsonify({"success": False, "message": "無效資料"}), 400
