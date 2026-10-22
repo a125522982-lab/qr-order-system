@@ -17,16 +17,12 @@
         .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
         .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 12px; border-radius: 8px; }
         
-        /* 行動端卡片化訂單樣式 */
         .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
         .order-card-body { font-size: 14px; line-height: 1.5; color: #444; }
         
-        /* 電話號碼與末四碼黃色標籤樣式 */
         .phone-display { font-size: 15px; font-weight: bold; color: #333; }
         .phone-last4-highlight { background: #ffea00; color: #000; padding: 2px 6px; border-radius: 4px; border: 1px solid #f59f00; font-size: 16px; font-weight: bold; margin-left: 2px; }
-        
-        /* 常客標籤 */
         .vip-tag { display: inline-block; background: #e7f5ff; color: #1971c2; border: 1px solid #a5d8ff; font-size: 12px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
         
         .btn-group-time { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
@@ -89,14 +85,12 @@
                         <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
                     </div>
                     <div>
-                        <!-- 完整電話與末四碼黃色高亮標籤 -->
                         <span class="phone-display">
                             {{ o.phone[:-4] }}<span class="phone-last4-highlight">{{ o.phone_last4 }}</span>
                         </span>
                     </div>
                 </div>
                 <div class="order-card-body">
-                    <!-- 常客比對標籤 -->
                     {% if o.order_count and o.order_count > 1 %}
                         <div><span class="vip-tag">⭐ 常客 (已訂購 {{ o.order_count }} 次)</span></div>
                     {% else %}
@@ -176,7 +170,41 @@
         {% endfor %}
     </div>
 
-    <!-- 後台：歷史訂單紀錄與常客資訊 -->
+    <!-- 後台新增：會員與常客名單管理專區 -->
+    <div class="card" style="background: #ffffff; border: 1px solid #a5d8ff;">
+        <details>
+            <summary style="color: #1971c2;">👥 會員與常客管理清單 (已註冊會員共 {{ members | length }} 位)</summary>
+            
+            <div style="overflow-x: auto; margin-top: 10px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>會員電話號碼</th>
+                            <th>累積訂單數</th>
+                            <th>總消費金額</th>
+                            <th>首次光臨</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in members %}
+                        <tr>
+                            <td><b>{{ m.phone }}</b> {% if m.order_count > 1 %}<span class="vip-tag">VIP</span>{% endif %}</td>
+                            <td><b>{{ m.order_count }}</b> 次</td>
+                            <td style="color: #e63946; font-weight: bold;">${{ m.total_spent }}</td>
+                            <td style="color: #666; font-size: 13px;">{{ m.first_seen }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #888; padding: 15px;">尚無會員紀錄</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </div>
+
+    <!-- 後台：歷史訂單紀錄 -->
     <div class="card" style="background: #ffffff;">
         <details>
             <summary>📜 查看歷史訂單紀錄 (已完成/取消 {{ completed_orders | length + cancelled_orders | length }} 筆)</summary>
