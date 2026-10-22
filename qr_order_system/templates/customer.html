@@ -108,7 +108,7 @@
         </div>
     </div>
 
-    <!-- 查詢區塊 (支援輸入10碼完整電話) -->
+    <!-- 查詢區塊 -->
     <div class="search-section">
         <span style="font-size: 14px; font-weight: bold; color: #856404;">🔍 查詢訂單 / 歷史訂單紀錄</span>
         <div class="search-box">
@@ -369,6 +369,7 @@
     }
 
     function openOptionModal(id, name, price, category) {
+        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); return; }
         currentModalItem = { 
             id: id, name: name, price: price, qty: 1, pepper: '要胡椒', spicy: '不辣', category: category,
             sauces: { "番茄醬": 0, "起司醬": 0, "香菜檸檬醬": 0 }, sides: {}
@@ -499,6 +500,7 @@
     function updateModalSubtotal() { document.getElementById('modal-subtotal').innerText = currentModalItem.price * currentModalItem.qty; }
 
     function confirmAddToCart() {
+        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，無法加入購物車！'); return; }
         let specText = "";
         let isOnlyQty = (currentModalItem.category === 'drink' || currentModalItem.category === 'promo' || currentModalItem.name.includes('煉香花月圓') || currentModalItem.name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (currentModalItem.name.includes('炸全雞'));
@@ -580,6 +582,7 @@
     }
 
     function promptCheckout() {
+        if (!checkIsOpenNow()) { alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！'); return; }
         if (cart.length === 0) { alert('購物車是空的，請先選擇餐點！'); return; }
         
         let isBooking = document.querySelector('input[name="order-type-mode"]:checked').value === 'booking';
@@ -617,7 +620,7 @@
         let phoneInput = document.getElementById('search-phone').value.trim();
         if (phoneInput.length !== 10 || isNaN(phoneInput)) {
             if (phoneInput.length === 4 && !isNaN(phoneInput)) {
-                activePhone = phoneInput; // 相容末四碼搜尋
+                activePhone = phoneInput;
             } else {
                 alert('請輸入正確的 10 位手機號碼！'); 
                 return;
@@ -757,7 +760,6 @@
         countdownTimers[orderId] = setInterval(updateTimer, 1000);
     }
 
-    // 渲染歷史訂單紀錄，並加入「下一樣的單 (再點一次)」功能
     function renderHistoryList(ordersList, phoneStr) {
         document.getElementById('order-view').style.display = 'none';
         document.getElementById('tracker-view').style.display = 'none';
@@ -772,7 +774,6 @@
                 itemsHtml += `<li>${i.name} x ${i.quantity}</li>`;
             });
 
-            // 將訂單餐點 JSON 化傳遞給再點一次功能
             let orderJson = JSON.stringify(order.food_list || []).replace(/"/g, '&quot;');
 
             html += `
@@ -790,8 +791,13 @@
         container.innerHTML = html;
     }
 
-    // 重新點購歷史訂單內容
+    // 重新點購歷史訂單時，進行營業時間檢查防護
     function reorderSameItems(itemsJsonStr) {
+        if (!checkIsOpenNow()) {
+            alert('🔴 目前為非營業時間或已打烊，無法進行點餐！');
+            return;
+        }
+
         try {
             let items = JSON.parse(itemsJsonStr);
             if (!items || items.length === 0) return;
@@ -830,13 +836,21 @@
         }
     }
 
+    // 返回點餐頁面時，若為非營業時間則跳警告，防止切換
     function backToMenuOnly() {
         if (statusInterval) clearInterval(statusInterval);
         alertAudio.pause();
         alertAudio.currentTime = 0;
         document.getElementById('history-view').style.display = 'none';
         document.getElementById('tracker-view').style.display = 'none';
-        document.getElementById('order-view').style.display = 'block';
+
+        if (!checkIsOpenNow()) {
+            document.getElementById('closed-banner').style.display = 'block';
+            document.getElementById('order-view').style.display = 'none';
+            alert('🔴 目前為非營業時間或已打烊，暫停線上點餐！');
+        } else {
+            document.getElementById('order-view').style.display = 'block';
+        }
     }
 
     async function acknowledgeOrder(orderId) {
