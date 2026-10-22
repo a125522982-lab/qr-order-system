@@ -2,10 +2,16 @@ import json
 import os
 import socket
 import time
+from functools import wraps
 from datetime import datetime, timezone, timedelta
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, redirect, url_for, session
 
 app = Flask(__name__)
+app.secret_key = "kukes_secret_key_0522_love"  # 用於 Session 加密
+
+# 後台登入帳密設定
+ADMIN_USERNAME = "酷嗑斯"
+ADMIN_PASSWORD = "0522love"
 
 MENU_FILE = "menu.json"
 HOURS_FILE = "hours.json"
@@ -143,8 +149,16 @@ def save_orders_db():
 
 ORDERS, ACCEPTED_ORDERS, COMPLETED_ORDERS, CANCELLED_ORDERS, MEMBERS_DB = load_orders_db()
 
+# 登入防護 Decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def register_or_update_member(phone, total_spent_delta, created_at_str):
-    """ 獨立且永久儲存會員資料 """
     phone = str(phone).strip()
     if len(phone) != 10:
         return
@@ -191,6 +205,28 @@ def is_currently_open():
 def index():
     return '<h1>酷嗑斯美式炸雞</h1><p><a href="/menu?table=1">前往點餐</a> | <a href="/admin">後台</a></p>'
 
+# 登入頁面與邏輯
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session["logged_in"] = True
+            return redirect(url_for("admin_page"))
+        else:
+            error = "帳號或密碼錯誤！"
+            
+    return render_template("login.html", error=error)
+
+# 登出邏輯
+@app.route("/logout")
+def logout():
+    session.pop("logged_in", None)
+    return redirect(url_for("login"))
+
 @app.route("/menu")
 def customer_menu():
     table = request.args.get("table", "1")
@@ -199,6 +235,7 @@ def customer_menu():
     return render_template("customer.html", table=table, menu=menu, hours=hours)
 
 @app.route("/admin")
+@login_required
 def admin_page():
     item_stats = {}
     for o in COMPLETED_ORDERS:
@@ -212,7 +249,6 @@ def admin_page():
             o["order_count"] = get_customer_order_count(o.get("phone"))
         return order_list
 
-    # 轉成列表並依總消費或訂單數排序
     members_list = list(MEMBERS_DB.values())
     members_list.sort(key=lambda x: x["order_count"], reverse=True)
 
@@ -230,10 +266,12 @@ def admin_page():
     )
 
 @app.route("/api/admin/check_orders", methods=["GET"])
+@login_required
 def api_check_orders():
     return jsonify({"pending_count": len(ORDERS)})
 
 @app.route("/api/hours/save", methods=["POST"])
+@login_required
 def update_hours():
     try:
         data = request.get_json(silent=True)
@@ -245,6 +283,7 @@ def update_hours():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route("/api/menu/toggle_soldout", methods=["POST"])
+@login_required
 def toggle_soldout():
     try:
         data = request.get_json(silent=True)
@@ -259,6 +298,7 @@ def toggle_soldout():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route("/api/promo/add", methods=["POST"])
+@login_required
 def add_promo_item():
     try:
         data = request.get_json(silent=True)
@@ -279,6 +319,7 @@ def add_promo_item():
         return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route("/api/promo/delete", methods=["POST"])
+@login_required
 def delete_promo_item():
     try:
         data = request.get_json(silent=True)
@@ -332,7 +373,6 @@ def place_order():
         }
 
         ORDERS.append(new_order)
-        # 登記或更新永久會員資料
         register_or_update_member(phone, total_amount, now_str)
         save_orders_db()
         return jsonify({"success": True, "order_id": order_id})
@@ -366,6 +406,7 @@ def check_order_status():
     return jsonify({"success": False}), 404
 
 @app.route("/api/order/accept", methods=["POST"])
+@login_required
 def accept_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
@@ -416,6 +457,7 @@ def acknowledge_order():
     return jsonify({"success": False}), 404
 
 @app.route("/api/order/ready", methods=["POST"])
+@login_required
 def ready_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
@@ -427,6 +469,7 @@ def ready_order():
     return jsonify({"success": False}), 404
 
 @app.route("/api/order/complete", methods=["POST"])
+@login_required
 def complete_order():
     data = request.get_json(silent=True) or {}
     target_id = str(data.get("order_id", ""))
@@ -449,7 +492,6 @@ def cancel_order():
                 found = lst.pop(i)
                 found["status"] = "cancelled"
                 CANCELLED_ORDERS.append(found)
-                # 若取消訂單，扣除會員的消費金額與次數
                 phone_str = str(found.get("phone", ""))
                 if phone_str in MEMBERS_DB:
                     MEMBERS_DB[phone_str]["order_count"] = max(0, MEMBERS_DB[phone_str]["order_count"] - 1)
