@@ -304,8 +304,8 @@
         </div>
     </div>
 
-    <!-- 🔊 音效檔引用 (您的 mp3 音效檔) -->
-    <audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
+    <!-- 🔊 後台端專用音效檔 (static/alert.mp3) -->
+    <audio id="admin-alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" loop preload="auto"></audio>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -313,30 +313,25 @@
         let lastPendingCount = {{ orders|length }};
         const alertAudio = document.getElementById('admin-alert-sound');
 
-        // 🔥 自動點擊頁面解鎖 Audio 播放權限
-        document.addEventListener('click', () => {
+        document.addEventListener('click', () => { 
             if (alertAudio.paused && lastPendingCount > 0) {
                 alertAudio.play().catch(e => {});
             }
         }, { once: true });
 
-        // 頁面載入時如果有未處理訂單，立刻試圖播放音效
         window.addEventListener('DOMContentLoaded', () => {
             if (lastPendingCount > 0) {
                 alertAudio.play().catch(e => {});
             }
         });
 
-        // 每3秒輪詢新訂單
         setInterval(async () => {
             try {
                 let res = await fetch('/api/admin/check_orders');
                 let data = await res.json();
                 if (data.pending_count > 0) {
-                    // 有待處理訂單就持續播放
                     alertAudio.play().catch(e => {});
                 } else {
-                    // 無待處理訂單則停止
                     alertAudio.pause();
                     alertAudio.currentTime = 0;
                 }
@@ -356,7 +351,6 @@
 
         async function submitAcceptOrder(mins) {
             if (!currentTargetOrderId) return;
-            // 接單後立刻關閉音效
             alertAudio.pause();
             alertAudio.currentTime = 0;
             await fetch('/api/order/accept', { 
