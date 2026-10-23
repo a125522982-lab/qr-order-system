@@ -11,7 +11,7 @@
         body { background: #f4f6f8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #333; }
         .card { border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 2px 6px rgba(0,0,0,0.03); margin-bottom: 16px; }
         
-        /* 手機頁籤最佳化 */
+        /* 手機頁籤滑動 */
         .nav-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 5px; }
         .nav-pills::-webkit-scrollbar { display: none; }
         .nav-pills .nav-item { flex-shrink: 0; }
@@ -19,26 +19,31 @@
         .nav-pills .nav-link.active { background-color: #e63946; color: white; border-color: #e63946; }
         .badge-count { font-size: 12px; background: #d90429; color: white; border-radius: 20px; padding: 2px 7px; margin-left: 4px; }
 
-        /* 手機卡片式佈局 (Mobile Friendly Cards) */
+        /* 手機卡片化 */
         .mobile-data-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 14px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); position: relative; }
         .mobile-data-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #eee; padding-bottom: 8px; margin-bottom: 8px; }
-        .mobile-data-title { font-weight: bold; font-size: 16px; color: #111; }
         .mobile-data-body { font-size: 14px; color: #555; line-height: 1.5; }
-        
-        /* 大按鈕方便手機手指點擊 */
         .btn-touch { padding: 10px 14px; font-weight: bold; font-size: 15px; border-radius: 8px; }
+
+        /* 快捷時間選購彈窗 */
+        .time-btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .time-btn { padding: 14px; font-size: 18px; font-weight: bold; background: #f8f9fa; border: 2px solid #2b9348; color: #2b9348; border-radius: 10px; cursor: pointer; }
+        .time-btn:active { background: #2b9348; color: white; }
     </style>
 </head>
 <body class="p-2 p-md-4">
     <div class="container-fluid max-width-1200" style="max-width: 800px; margin: 0 auto;">
         
-        <!-- 頂部頁首 -->
+        <!-- 頂部頁首與音效啟用開關 -->
         <div class="d-flex justify-content-between align-items-center my-2">
-            <h1 class="h4 m-0 fw-bold text-dark">🍗 酷嗑斯商家後台</h1>
+            <div>
+                <h1 class="h4 m-0 fw-bold text-dark d-inline-block">🍗 酷嗑斯後台</h1>
+                <button id="sound-btn" class="btn btn-sm btn-warning fw-bold ms-2" onclick="enableAudio()">🔊 開啟提示音效</button>
+            </div>
             <a href="/logout" class="btn btn-outline-danger btn-sm fw-bold">🚪 登出</a>
         </div>
 
-        <!-- 📅 日期篩選區塊 (手機高度自適應) -->
+        <!-- 📅 日期篩選區塊 -->
         <div class="card p-3 bg-white mb-3">
             <form method="GET" action="/admin" class="row g-2 align-items-center">
                 <div class="col-12 col-sm-auto d-flex align-items-center gap-2">
@@ -55,7 +60,7 @@
             </form>
         </div>
 
-        <!-- 📱 可左右滑動的頁籤 -->
+        <!-- 📱 滑動頁籤 -->
         <ul class="nav nav-pills mb-3" id="adminTabs" role="tablist">
             <li class="nav-item">
                 <button class="nav-link active" id="orders-tab" data-bs-toggle="pill" data-bs-target="#orders-pane">
@@ -94,7 +99,7 @@
                         <div class="text-muted text-center py-4 fs-6">🎉 目前沒有待處理訂單</div>
                     {% else %}
                         {% for o in orders %}
-                            <div class="mobile-data-card border-warning style="background-color: #fffdf5;">
+                            <div class="mobile-data-card border-warning" style="background-color: #fffdf5;">
                                 <div class="mobile-data-header">
                                     <span class="badge bg-warning text-dark fs-6">{{ o.order_type }}</span>
                                     <span class="text-muted small"><i class="bi bi-clock"></i> {{ o.created_at }}</span>
@@ -112,7 +117,7 @@
                                 <div class="text-end text-danger fs-5 fw-bold mb-2">總計：${{ o.total }}</div>
                                 <div class="d-grid gap-2 d-flex justify-content-end">
                                     <button class="btn btn-outline-danger btn-touch flex-fill" onclick="cancelOrder('{{ o.id }}')">拒絕/取消</button>
-                                    <button class="btn btn-success btn-touch flex-fill" onclick="acceptOrder('{{ o.id }}')">接受訂單</button>
+                                    <button class="btn btn-success btn-touch flex-fill" onclick="openTimeModal('{{ o.id }}')">接受訂單 (選擇時間)</button>
                                 </div>
                             </div>
                         {% endfor %}
@@ -159,7 +164,7 @@
                 </div>
             </div>
 
-            <!-- 3. 已完成歷史訂單 (手機卡片化) -->
+            <!-- 3. 已完成歷史訂單 -->
             <div class="tab-pane fade" id="history-pane">
                 <div class="card p-3">
                     <h5 class="card-title fw-bold mb-3">📅 {{ selected_date }} 歷史成交紀錄</h5>
@@ -189,7 +194,7 @@
                 </div>
             </div>
 
-            <!-- 4. 常客管理 (手機卡片化) -->
+            <!-- 4. 常客管理 -->
             <div class="tab-pane fade" id="members-pane">
                 <div class="card p-3">
                     <h5 class="card-title fw-bold mb-3">👑 常客資料庫</h5>
@@ -216,7 +221,6 @@
             <!-- 5. 營業時間與菜單設定 -->
             <div class="tab-pane fade" id="settings-pane">
                 <div class="row">
-                    <!-- 營業時間設定 -->
                     <div class="col-12 col-md-6">
                         <div class="card p-3 mb-3">
                             <h5 class="card-title fw-bold mb-3">🕒 營業時間與打烊設定</h5>
@@ -250,7 +254,6 @@
                         </div>
                     </div>
 
-                    <!-- 菜單品項估售與優惠管理 -->
                     <div class="col-12 col-md-6">
                         <div class="card p-3 mb-3">
                             <h5 class="card-title fw-bold mb-3">🔥 新增優惠/特價品項</h5>
@@ -289,12 +292,76 @@
         </div>
     </div>
 
+    <!-- ⏱️ 快捷選擇製作時間彈窗 -->
+    <div class="modal fade" id="timeSelectModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3 text-center">
+                <h5 class="fw-bold mb-2 text-dark">⏱️ 請選擇預估製作時間</h5>
+                <div class="text-muted small">接受訂單後將自動列印單據</div>
+                
+                <div class="time-btn-grid">
+                    <button class="time-btn" onclick="submitAcceptOrder(5)">5 分鐘</button>
+                    <button class="time-btn" onclick="submitAcceptOrder(10)">10 分鐘</button>
+                    <button class="time-btn" onclick="submitAcceptOrder(15)">15 分鐘</button>
+                    <button class="time-btn" onclick="submitAcceptOrder(20)">20 分鐘</button>
+                    <button class="time-btn" onclick="submitAcceptOrder(25)">25 分鐘</button>
+                    <button class="time-btn" onclick="submitAcceptOrder(30)">30 分鐘</button>
+                </div>
+
+                <button class="btn btn-secondary w-100 mt-3 btn-touch" data-bs-dismiss="modal">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 音效檔 (Web Audio API 備用) -->
+    <audio id="admin-alert-sound" src="{{ url_for('static', filename='customer_alert.mp3') }}" loop preload="auto"></audio>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        async function acceptOrder(id) {
-            let mins = prompt("請輸入預估製作分鐘數：", "15");
-            if (!mins) return;
-            await fetch('/api/order/accept', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id, est_minutes: mins }) });
+        let currentTargetOrderId = null;
+        let audioAllowed = false;
+        let lastPendingCount = {{ orders|length }};
+        const alertAudio = document.getElementById('admin-alert-sound');
+
+        function enableAudio() {
+            audioAllowed = true;
+            alertAudio.play().then(() => {
+                alertAudio.pause();
+                alertAudio.currentTime = 0;
+                document.getElementById('sound-btn').className = 'btn btn-sm btn-success fw-bold ms-2';
+                document.getElementById('sound-btn').innerText = '✅ 音效已開啟';
+            }).catch(e => console.error(e));
+        }
+
+        // 輪詢檢測新訂單並響鈴
+        setInterval(async () => {
+            try {
+                let res = await fetch('/api/admin/check_orders');
+                let data = await res.json();
+                if (data.pending_count > lastPendingCount) {
+                    if (audioAllowed) alertAudio.play().catch(e => {});
+                    location.reload();
+                } else if (data.pending_count < lastPendingCount) {
+                    lastPendingCount = data.pending_count;
+                }
+            } catch (e) {}
+        }, 3000);
+
+        function openTimeModal(id) {
+            currentTargetOrderId = id;
+            let myModal = new bootstrap.Modal(document.getElementById('timeSelectModal'));
+            myModal.show();
+        }
+
+        async function submitAcceptOrder(mins) {
+            if (!currentTargetOrderId) return;
+            alertAudio.pause();
+            alertAudio.currentTime = 0;
+            await fetch('/api/order/accept', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ order_id: currentTargetOrderId, est_minutes: mins }) 
+            });
             location.reload();
         }
 
@@ -355,9 +422,7 @@
 
         async function saveHoursSettings() {
             let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-            let hoursData = {
-                force_close: document.getElementById('forceCloseCheck').checked
-            };
+            let hoursData = { force_close: document.getElementById('forceCloseCheck').checked };
             days.forEach(d => {
                 hoursData[d] = {
                     enabled: document.getElementById(`en_${d}`).checked,
