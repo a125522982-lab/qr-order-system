@@ -2,480 +2,268 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>酷嗑斯美式炸雞 - 商家後台</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 12px; background: #f4f6f8; color: #333; }
-        h1 { font-size: 20px; text-align: center; margin: 5px 0 10px 0; color: #111; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 15px; }
-        
-        .stats-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
-        @media(min-width: 600px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
-        
-        .revenue-box { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-        .stats-box { background: #e2f0cb; border: 1px solid #b5e28d; color: #386641; padding: 12px; border-radius: 8px; }
-        
-        .order-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-        .order-card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; margin-bottom: 8px; }
-        .order-card-body { font-size: 14px; line-height: 1.5; color: #444; }
-        
-        .phone-display { font-size: 15px; font-weight: bold; color: #333; }
-        .phone-last4-highlight { background: #ffea00; color: #000; padding: 2px 6px; border-radius: 4px; border: 1px solid #f59f00; font-size: 16px; font-weight: bold; margin-left: 2px; }
-        .vip-tag { display: inline-block; background: #e7f5ff; color: #1971c2; border: 1px solid #a5d8ff; font-size: 12px; font-weight: bold; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
-        
-        .btn-group-time { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-        
-        button { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; margin-right: 4px; }
-        .btn-success { background: #2b9348; color: white; }
-        .btn-danger { background: #d90429; color: white; }
-        .btn-primary { background: #17a2b8; color: white; }
-        .btn-warning { background: #ff922b; color: white; }
-        
-        .badge-type-booking { background: #e0f2fe; color: #0369a1; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        .badge-type-immediate { background: #fef3c7; color: #d97706; padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
-        
-        .hours-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 14px; flex-wrap: wrap; }
-        .hours-row label { width: 55px; font-weight: bold; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-        th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
-        th { background: #f8f9fa; }
-
-        details summary { font-size: 16px; font-weight: bold; cursor: pointer; padding: 5px 0; outline: none; }
+        body { background: #f8f9fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .nav-pills .nav-link.active { background-color: #2b9348; }
+        .nav-pills .nav-link { color: #495057; font-weight: bold; }
+        .badge-count { font-size: 14px; background: #d90429; color: white; border-radius: 20px; padding: 2px 8px; }
+        .table td, .table th { vertical-align: middle; }
     </style>
 </head>
-<body>
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-    <h1 style="margin: 0;">🍗 酷嗑斯美式炸雞 - 商家後台</h1>
-    <a href="/logout" style="background: #e9ecef; color: #d90429; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px; font-weight: bold;">🚪 登出</a>
-</div>
-
-    <!-- 營業額與統計 -->
-    <div class="stats-grid">
-        <div class="revenue-box">
-            <span>💰 今日總營業額：</span>
-            <span style="font-size: 22px; color: #155724;">${{ total_revenue }}</span>
+<body class="p-3 p-md-4">
+    <div class="container-fluid max-width-1200">
+        <!-- 頂部與登出 -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 m-0">🍗 酷嗑斯美式炸雞 - 商家後台</h1>
+            <a href="/logout" class="btn btn-outline-danger btn-sm fw-bold">🚪 登出</a>
         </div>
-        <div class="stats-box">
-            <h3 style="margin: 0 0 5px 0; font-size: 15px;">📊 品項銷售統計</h3>
-            <ul style="margin: 0; padding-left: 18px; font-size: 13px; max-height: 70px; overflow-y: auto;">
-                {% if item_stats %}
-                    {% for name, qty in item_stats.items() %}
-                        <li>{{ name }}：<b>{{ qty }}</b> 份</li>
-                    {% endfor %}
-                {% else %}
-                    <li style="color: #666;">尚無銷量紀錄</li>
-                {% endif %}
-            </ul>
+
+        <!-- 🔥 日期篩選工具列 -->
+        <div class="card p-3 bg-white mb-4">
+            <form method="GET" action="/admin" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <label class="col-form-label fw-bold">📅 查詢日期：</label>
+                </div>
+                <div class="col-auto">
+                    <input type="date" name="date" class="form-control" value="{{ selected_date }}">
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary fw-bold">套用查詢</button>
+                    <a href="/admin?date={{ today_str }}" class="btn btn-outline-secondary">回到今天</a>
+                </div>
+                <div class="col-auto ms-auto">
+                    <span class="badge bg-success fs-6">【{{ selected_date }}】當日營業額: ${{ total_revenue }}</span>
+                </div>
+            </form>
         </div>
-    </div>
 
-    <!-- 進行中訂單管理 -->
-    <div class="card" style="border: 2px solid #2b9348;">
-        <h2 style="font-size: 18px; margin-bottom: 10px;">📋 待處理訂單 ({{ orders | length }})</h2>
-        {% for o in orders %}
-            <div class="order-card" style="border-left: 5px solid #ff922b;">
-                <div class="order-card-header">
-                    <div>
-                        {% if o.order_type == '預約單' %}
-                            <span class="badge-type-booking">📅 預約 {{ o.booking_time }}</span>
-                        {% else %}
-                            <span class="badge-type-immediate">⚡ 即時單</span>
-                        {% endif %}
-                        <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
-                    </div>
-                    <div>
-                        <span class="phone-display">
-                            {{ o.phone[:-4] }}<span class="phone-last4-highlight">{{ o.phone_last4 }}</span>
-                        </span>
-                    </div>
-                </div>
-                <div class="order-card-body">
-                    {% if o.order_count and o.order_count > 1 %}
-                        <div><span class="vip-tag">⭐ 常客 (已訂購 {{ o.order_count }} 次)</span></div>
-                    {% else %}
-                        <div><span class="vip-tag" style="background: #f1f3f5; color: #495057; border-color: #dee2e6;">新顧客 (首次訂購)</span></div>
-                    {% endif %}
-
-                    <ul style="padding-left: 18px; margin: 6px 0;">
-                        {% for item in o.food_list %}
-                            <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
-                        {% endfor %}
-                    </ul>
-                    <div style="text-align: right; font-size: 16px; font-weight: bold; color: #d90429; margin: 5px 0;">總金額: ${{ o.total }}</div>
-                    
-                    {% if o.order_type == '預約單' %}
-                        <div style="margin-top: 8px;">
-                            <button class="btn-success" style="width: 100%; padding: 10px;" onclick="acceptOrder('{{ o.id }}', 0)">接受預約單</button>
-                        </div>
-                    {% else %}
-                        <div style="font-size: 13px; font-weight: bold; color: #555; margin-top: 6px;">選擇即時等候時間並接單：</div>
-                        <div class="btn-group-time">
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 5)">5分</button>
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 10)">10分</button>
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 15)">15分</button>
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 20)">20分</button>
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 25)">25分</button>
-                            <button class="btn-success" style="flex: 1; padding: 10px 0;" onclick="acceptOrder('{{ o.id }}', 30)">30分</button>
-                        </div>
-                    {% endif %}
-                    <button class="btn-danger" style="width: 100%; margin-top: 6px; padding: 8px;" onclick="cancelOrder('{{ o.id }}')">取消訂單</button>
-                </div>
-            </div>
-        {% else %}
-            <div style="text-align: center; color: #777; padding: 15px;">目前沒有待處理訂單</div>
-        {% endfor %}
-
-        <h2 style="font-size: 18px; margin-top: 20px; margin-bottom: 10px;">🔥 製作中訂單 ({{ accepted_orders | length }})</h2>
-        {% for o in accepted_orders %}
-            <div class="order-card" style="border-left: 5px solid #2b9348;">
-                <div class="order-card-header">
-                    <div>
-                        {% if o.order_type == '預約單' %}
-                            <span class="badge-type-booking">📅 預約</span>
-                        {% else %}
-                            <span class="badge-type-immediate">⚡ 即時</span>
-                        {% endif %}
-                        <span style="font-size: 16px; font-weight: bold; margin-left: 5px;">{{ o.table }} 號桌</span>
-                    </div>
-                    <div>
-                        <span class="phone-display">
-                            {{ o.phone[:-4] }}<span class="phone-last4-highlight">{{ o.phone_last4 }}</span>
-                        </span>
-                    </div>
-                </div>
-                <div class="order-card-body">
-                    {% if o.order_count and o.order_count > 1 %}
-                        <div><span class="vip-tag">⭐ 常客 (已訂購 {{ o.order_count }} 次)</span></div>
-                    {% endif %}
-                    <div style="font-size: 14px; font-weight: bold; color: #e63946; margin-top: 4px;">
-                        狀態: {% if o.status == 'ready' %}🔔 已通知取餐{% else %}{{ o.est_time }}{% endif %}
-                    </div>
-                    <ul style="padding-left: 18px; margin: 5px 0;">
-                        {% for item in o.food_list %}
-                            <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
-                        {% endfor %}
-                    </ul>
-                    <div style="text-align: right; font-size: 15px; font-weight: bold;">金額: ${{ o.total }}</div>
-                    <div style="display: flex; gap: 6px; margin-top: 8px;">
-                        {% if o.status != 'ready' %}
-                            <button class="btn-warning" style="flex: 1; padding: 10px 0;" onclick="readyOrder('{{ o.id }}')">📢 製作完成 (通知)</button>
-                        {% endif %}
-                        <button class="btn-primary" style="flex: 1; padding: 10px 0;" onclick="completeOrder('{{ o.id }}')">結案 (完成)</button>
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div style="text-align: center; color: #777; padding: 15px;">目前沒有製作中的訂單</div>
-        {% endfor %}
-    </div>
-
-    <!-- 後台新增：會員與常客名單管理專區 -->
-    <div class="card" style="background: #ffffff; border: 1px solid #a5d8ff;">
-        <details>
-            <summary style="color: #1971c2;">👥 會員與常客管理清單 (已註冊會員共 {{ members | length }} 位)</summary>
-            
-            <div style="overflow-x: auto; margin-top: 10px;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>會員電話號碼</th>
-                            <th>累積訂單數</th>
-                            <th>總消費金額</th>
-                            <th>首次光臨</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for m in members %}
-                        <tr>
-                            <td><b>{{ m.phone }}</b> {% if m.order_count > 1 %}<span class="vip-tag">VIP</span>{% endif %}</td>
-                            <td><b>{{ m.order_count }}</b> 次</td>
-                            <td style="color: #e63946; font-weight: bold;">${{ m.total_spent }}</td>
-                            <td style="color: #666; font-size: 13px;">{{ m.first_seen }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="4" style="text-align: center; color: #888; padding: 15px;">尚無會員紀錄</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </details>
-    </div>
-
-    <!-- 後台：歷史訂單紀錄 -->
-    <div class="card" style="background: #ffffff;">
-        <details>
-            <summary>📜 查看歷史訂單紀錄 (已完成/取消 {{ completed_orders | length + cancelled_orders | length }} 筆)</summary>
-            
-            <div style="margin-top: 10px;">
-                <h3 style="font-size: 16px; color: #2b9348; margin-bottom: 8px;">✅ 已完成訂單</h3>
-                {% for o in completed_orders %}
-                    <div class="order-card" style="border-left: 4px solid #2b9348; background: #fafafa;">
-                        <div class="order-card-header">
-                            <div>
-                                <span style="font-size: 12px; color: #777;">{{ o.created_at }}</span> | 
-                                {% if o.order_type == '預約單' %}
-                                    <span class="badge-type-booking">📅 預約</span>
-                                {% else %}
-                                    <span class="badge-type-immediate">⚡ 即時</span>
-                                {% endif %}
-                                <b>{{ o.table }} 號桌</b>
-                            </div>
-                            <div>
-                                <span class="phone-display" style="font-size: 13px;">
-                                    {{ o.phone[:-4] }}<span class="phone-last4-highlight" style="font-size: 13px;">{{ o.phone_last4 }}</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="order-card-body">
-                            <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px;">
-                                {% for item in o.food_list %}
-                                    <li>{{ item.name }} x {{ item.quantity }}</li>
-                                {% endfor %}
-                            </ul>
-                            <div style="text-align: right; font-weight: bold; color: #2b9348; font-size: 15px;">總金額: ${{ o.total }}</div>
-                        </div>
-                    </div>
-                {% else %}
-                    <div style="text-align: center; color: #888; font-size: 13px; margin-bottom: 10px;">尚無已完成訂單</div>
-                {% endfor %}
-
-                <h3 style="font-size: 16px; color: #d90429; margin-top: 15px; margin-bottom: 8px;">❌ 已取消訂單</h3>
-                {% for o in cancelled_orders %}
-                    <div class="order-card" style="border-left: 4px solid #d90429; background: #fafafa;">
-                        <div class="order-card-header">
-                            <div>
-                                <span style="font-size: 12px; color: #777;">{{ o.created_at }}</span> | 
-                                <b>{{ o.table }} 號桌</b>
-                            </div>
-                            <div>
-                                <span class="phone-display" style="font-size: 13px; color: #777;">
-                                    {{ o.phone[:-4] }}<span class="phone-last4-highlight" style="font-size: 13px; background: #e9ecef; border-color: #ced4da;">{{ o.phone_last4 }}</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="order-card-body">
-                            <ul style="padding-left: 18px; margin: 4px 0; font-size: 13px; color: #777;">
-                                {% for item in o.food_list %}
-                                    <li>{{ item.name }} x {{ item.quantity }}</li>
-                                {% endfor %}
-                            </ul>
-                            <div style="text-align: right; font-weight: bold; color: #777; font-size: 14px;">金額: ${{ o.total }} (已取消)</div>
-                        </div>
-                    </div>
-                {% else %}
-                    <div style="text-align: center; color: #888; font-size: 13px;">尚無取消訂單</div>
-                {% endfor %}
-            </div>
-        </details>
-    </div>
-
-    <!-- 營業時間設定 -->
-    <div class="card">
-        <h2 style="font-size: 18px; margin-bottom: 10px;">⏰ 營業時間與暫停接單</h2>
-        <div style="margin-bottom: 12px; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba;">
-            <label style="font-weight: bold; color: #856404; font-size: 14px; cursor: pointer;">
-                <input type="checkbox" id="force-close-chk" {% if hours.force_close %}checked{% endif %} onchange="toggleForceClose()">
-                🔴 強制暫停接單 (顯示休息中)
-            </label>
-        </div>
-        
-        <form id="hours-form" onsubmit="saveHours(event)">
-            {% for day, label in [('Mon', '週一'), ('Tue', '週二'), ('Wed', '週三'), ('Thu', '週四'), ('Fri', '週五'), ('Sat', '週六'), ('Sun', '週日')] %}
-            <div class="hours-row">
-                <label>{{ label }}</label>
-                <input type="checkbox" id="{{ day }}_en" {% if hours.get(day, {}).get('enabled') %}checked{% endif %}> 營業
-                <input type="time" id="{{ day }}_open" value="{{ hours.get(day, {}).get('open', '11:30') }}"> -
-                <input type="time" id="{{ day }}_close" value="{{ hours.get(day, {}).get('close', '20:00') }}">
-            </div>
-            {% endfor %}
-            <button type="submit" class="btn-success" style="width: 100%; margin-top: 10px; padding: 10px;">儲存營業時間設定</button>
-        </form>
-    </div>
-
-    <!-- 優惠專區與品項管理 -->
-    <div class="card" style="background: #fff9db; border: 1px solid #fcc419;">
-        <h2 style="font-size: 18px; margin-bottom: 10px;">🔥 優惠專區管理</h2>
-        <form onsubmit="addPromoItem(event)" style="display: flex; gap: 8px; flex-direction: column; margin-bottom: 12px;">
-            <input type="text" id="promo-name" placeholder="優惠名稱 (例: 雙人套餐)" required style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-            <input type="number" id="promo-price" placeholder="金額 ($)" required style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-            <button type="submit" style="background: #f59f00; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">新增至優惠專區</button>
-        </form>
-        
-        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">現有優惠品項：</div>
-        <ul id="promo-list" style="margin: 0; padding-left: 20px; font-size: 14px;">
-            {% for id, item in menu.items() %}
-                {% if item.get('category') == 'promo' %}
-                    <li style="margin-bottom: 6px;">
-                        {{ item.name }} - ${{ item.price }} 
-                        <button onclick="deletePromo('{{ id }}')" class="btn-danger" style="padding: 2px 8px; font-size: 12px; margin-left: 8px;">刪除</button>
-                    </li>
-                {% endif %}
-            {% endfor %}
+        <!-- 頁籤選單 -->
+        <ul class="nav nav-pills mb-3" id="adminTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="orders-tab" data-bs-toggle="pill" data-bs-target="#orders-pane">
+                    🛎️ 待處理訂單 <span class="badge-count" id="pending-count">{{ orders|length }}</span>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="accepted-tab" data-bs-toggle="pill" data-bs-target="#accepted-pane">
+                    🍳 製作中訂單 ({{ accepted_orders|length }})
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-pane">
+                    📜 已完成歷史訂單 ({{ completed_orders|length }})
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="members-tab" data-bs-toggle="pill" data-bs-target="#members-pane">
+                    👑 常客管理 ({{ members|length }})
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="settings-tab" data-bs-toggle="pill" data-bs-target="#settings-pane">
+                    ⚙️ 菜單與營業時間
+                </button>
+            </li>
         </ul>
+
+        <div class="tab-content" id="adminTabsContent">
+            <!-- 1. 待處理訂單 -->
+            <div class="tab-pane fade show active" id="orders-pane">
+                <div class="card p-3">
+                    <h5 class="card-title text-danger fw-bold">新進待接單</h5>
+                    {% if not orders %}
+                        <p class="text-muted text-center py-4">目前沒有待處理訂單</p>
+                    {% else %}
+                        {% for o in orders %}
+                            <div class="border rounded p-3 mb-3 bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge bg-warning text-dark fs-6">{{ o.order_type }}</span>
+                                    <span class="text-muted small">下單時間: {{ o.created_at }}</span>
+                                </div>
+                                <h4 class="mt-2 text-danger">取餐末四碼: {{ o.phone_last4 }} (桌號: {{ o.table }})</h4>
+                                <p class="mb-1"><b>電話:</b> {{ o.phone }} <span class="badge bg-info text-dark">歷史下單: {{ o.order_count }} 次</span></p>
+                                <ul class="my-2">
+                                    {% for item in o.food_list %}
+                                        <li><b>{{ item.name }}</b> x {{ item.quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                                <h5 class="text-end text-danger fw-bold">總計: ${{ o.total }}</h5>
+                                <div class="d-flex gap-2 justify-content-end mt-2">
+                                    <button class="btn btn-sm btn-outline-danger" onclick="cancelOrder('{{ o.id }}')">拒絕/取消</button>
+                                    <button class="btn btn-success fw-bold" onclick="acceptOrder('{{ o.id }}')">接受訂單 (預設15分)</button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 2. 製作中訂單 -->
+            <div class="tab-pane fade" id="accepted-pane">
+                <div class="card p-3">
+                    <h5 class="card-title text-primary fw-bold">正在製作 / 等候取餐</h5>
+                    {% if not accepted_orders %}
+                        <p class="text-muted text-center py-4">目前沒有製作中的訂單</p>
+                    {% else %}
+                        {% for o in accepted_orders %}
+                            <div class="border rounded p-3 mb-3">
+                                <div class="d-flex justify-content-between">
+                                    <span class="badge bg-primary fs-6">{{ o.order_type }}</span>
+                                    <span class="fw-bold text-success">{{ o.est_time }}</span>
+                                </div>
+                                <h4 class="mt-2">末四碼: {{ o.phone_last4 }} (電話: {{ o.phone }})</h4>
+                                <ul>
+                                    {% for item in o.food_list %}
+                                        <li>{{ item.name }} x {{ item.quantity }}</li>
+                                    {% endfor %}
+                                </ul>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-danger">總計: ${{ o.total }}</span>
+                                    <div class="d-flex gap-2">
+                                        {% if o.status == 'ready' %}
+                                            <span class="badge bg-success p-2">已通知顧客取餐</span>
+                                        {% else %}
+                                            <button class="btn btn-warning btn-sm fw-bold" onclick="readyOrder('{{ o.id }}')">🔔 餐點完成 (發送通知)</button>
+                                        {% endif %}
+                                        <button class="btn btn-secondary btn-sm" onclick="completeOrder('{{ o.id }}')">完成結案</button>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 3. 已完成歷史訂單 -->
+            <div class="tab-pane fade" id="history-pane">
+                <div class="card p-3">
+                    <h5 class="card-title fw-bold">📅 {{ selected_date }} 歷史成交紀錄</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>時間</th>
+                                    <th>末四碼</th>
+                                    <th>電話</th>
+                                    <th>品項明細</th>
+                                    <th>金額</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for o in completed_orders %}
+                                    <tr>
+                                        <td>{{ o.created_at }}</td>
+                                        <td><span class="badge bg-secondary">{{ o.phone_last4 }}</span></td>
+                                        <td>{{ o.phone }}</td>
+                                        <td>
+                                            {% for item in o.food_list %}
+                                                <small>• {{ item.name }} x{{ item.quantity }}</small><br>
+                                            {% endfor %}
+                                        </td>
+                                        <td class="fw-bold text-danger">${{ o.total }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteOrder('{{ o.id }}')">🗑️ 刪除紀錄</button>
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="6" class="text-center text-muted py-4">選取日期無完成訂單</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 常客管理 -->
+            <div class="tab-pane fade" id="members-pane">
+                <div class="card p-3">
+                    <h5 class="card-title fw-bold">👑 常客資料庫</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>電話號碼</th>
+                                    <th>首次消費日期</th>
+                                    <th>總消費次數</th>
+                                    <th>累積消費金額</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in members %}
+                                    <tr>
+                                        <td class="fw-bold">{{ m.phone }}</td>
+                                        <td>{{ m.first_seen }}</td>
+                                        <td><span class="badge bg-primary fs-6">{{ m.order_count }} 次</span></td>
+                                        <td class="fw-bold text-danger">${{ m.total_spent }}</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('{{ m.phone }}')">🗑️ 刪除常客</button>
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr><td colspan="5" class="text-center text-muted py-4">尚無會員資料</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 菜單與營業時間管理 -->
+            <div class="tab-pane fade" id="settings-pane">
+                <div class="card p-3">
+                    <h5 class="card-title fw-bold">⚙️ 後台系統管理</h5>
+                    <p class="text-muted">（此處可繼續進行營業時間設定與品項估售管理）</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- 品項售罄管理 -->
-    <div class="card">
-        <details>
-            <summary>🍔 菜單品項售罄管理（點擊展開）</summary>
-            <table>
-                <thead>
-                    <tr>
-                        <th>品名</th>
-                        <th>狀態</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for id, item in menu.items() %}
-                    <tr>
-                        <td><b>{{ item.name }}</b> (${{ item.price }})</td>
-                        <td>
-                            {% if item.is_sold_out %}
-                                <span style="color: #d90429; font-weight: bold;">售罄</span>
-                            {% else %}
-                                <span style="color: #2b9348; font-weight: bold;">正常</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <button onclick="toggleSoldOut('{{ id }}')" class="btn-primary" style="padding: 4px 8px; font-size: 12px;">切換</button>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </details>
-    </div>
-</div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function acceptOrder(id) {
+            let mins = prompt("請輸入預估製作分鐘數：", "15");
+            if (!mins) return;
+            await fetch('/api/order/accept', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id, est_minutes: mins }) });
+            location.reload();
+        }
 
-<audio id="admin-alert-sound" src="{{ url_for('static', filename='alert.mp3') }}" loop preload="auto"></audio>
+        async function readyOrder(id) {
+            await fetch('/api/order/ready', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id }) });
+            location.reload();
+        }
 
-<script>
-    let lastPendingCount = {{ orders | length }};
-    const adminAlertAudio = document.getElementById('admin-alert-sound');
+        async function completeOrder(id) {
+            await fetch('/api/order/complete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id }) });
+            location.reload();
+        }
 
-    window.addEventListener('load', () => {
-        if (lastPendingCount > 0) playAlertSound();
-    });
+        async function cancelOrder(id) {
+            if (!confirm("確定要取消這筆訂單嗎？")) return;
+            await fetch('/api/order/cancel', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id }) });
+            location.reload();
+        }
 
-    document.addEventListener('click', () => {
-        if (lastPendingCount > 0 && adminAlertAudio.paused) playAlertSound();
-    }, { once: true });
-
-    function playAlertSound() {
-        adminAlertAudio.currentTime = 0;
-        adminAlertAudio.play().catch(err => {});
-    }
-
-    function stopAlertSound() {
-        adminAlertAudio.pause();
-        adminAlertAudio.currentTime = 0;
-    }
-
-    setInterval(async () => {
-        if (document.activeElement.tagName === "INPUT") return;
-        try {
-            let res = await fetch('/api/admin/check_orders');
+        async function deleteOrder(id) {
+            if (!confirm("確定要永久刪除這筆歷史訂單嗎？")) return;
+            let res = await fetch('/api/admin/delete_order', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ order_id: id }) });
             let data = await res.json();
-            if (data.pending_count > lastPendingCount) {
-                playAlertSound();
-                setTimeout(() => location.reload(), 1000);
-            } else if (data.pending_count === 0) {
-                stopAlertSound();
-            }
-            lastPendingCount = data.pending_count;
-        } catch(e) {}
-    }, 3000);
+            if (data.success) location.reload();
+            else alert(data.message || "刪除失敗");
+        }
 
-    async function toggleForceClose() {
-        let isChecked = document.getElementById('force-close-chk').checked;
-        let hoursData = gatherHoursData();
-        hoursData.force_close = isChecked;
-        let res = await fetch('/api/hours/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hoursData) });
-        let data = await res.json();
-        if (data.success) alert(isChecked ? '已切換為暫停接單狀態！' : '已恢復正常接單狀態！');
-    }
-
-    function gatherHoursData() {
-        let days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        let data = { force_close: document.getElementById('force-close-chk').checked };
-        days.forEach(d => {
-            data[d] = {
-                enabled: document.getElementById(`${d}_en`).checked,
-                open: document.getElementById(`${d}_open`).value,
-                close: document.getElementById(`${d}_close`).value
-            };
-        });
-        return data;
-    }
-
-    async function saveHours(event) {
-        event.preventDefault();
-        let hoursData = gatherHoursData();
-        let res = await fetch('/api/hours/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hoursData) });
-        let data = await res.json();
-        if (data.success) { alert('營業時間儲存成功！'); location.reload(); }
-    }
-
-    async function addPromoItem(event) {
-        event.preventDefault();
-        let name = document.getElementById('promo-name').value.trim();
-        let price = document.getElementById('promo-price').value.trim();
-        let res = await fetch('/api/promo/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, price }) });
-        let data = await res.json();
-        if (data.success) { alert('優惠品項新增成功！'); location.reload(); }
-    }
-
-    async function deletePromo(itemId) {
-        if (!confirm('確定要刪除這個優惠品項嗎？')) return;
-        let res = await fetch('/api/promo/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId }) });
-        let data = await res.json();
-        if (data.success) { alert('已成功刪除'); location.reload(); }
-    }
-
-    async function acceptOrder(orderId, estMinutes) {
-        stopAlertSound();
-        let res = await fetch('/api/order/accept', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: orderId, est_minutes: estMinutes })
-        });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-        else { alert('操作失敗'); }
-    }
-
-    async function readyOrder(orderId) {
-        let res = await fetch('/api/order/ready', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
-        let data = await res.json();
-        if (data.success) { alert('已發送取餐通知給顧客！'); location.reload(); }
-    }
-
-    async function completeOrder(orderId) {
-        let res = await fetch('/api/order/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-    }
-
-    async function cancelOrder(orderId) {
-        stopAlertSound();
-        if (!confirm('確定取消此訂單？')) return;
-        let res = await fetch('/api/order/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId }) });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-    }
-
-    async function toggleSoldOut(itemId) {
-        let res = await fetch('/api/menu/toggle_soldout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ item_id: itemId }) });
-        let data = await res.json();
-        if (data.success) { location.reload(); }
-    }
-</script>
+        async function deleteMember(phone) {
+            if (!confirm(`確定要刪除會員 ${phone} 的紀錄嗎？`)) return;
+            let res = await fetch('/api/admin/delete_member', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ phone: phone }) });
+            let data = await res.json();
+            if (data.success) location.reload();
+            else alert(data.message || "刪除失敗");
+        }
+    </script>
 </body>
 </html>
