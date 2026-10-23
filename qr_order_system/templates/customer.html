@@ -31,10 +31,13 @@
         .menu-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         .menu-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; padding: 12px; border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .menu-item[data-category="promo"] { background: #fff9db; border-color: #fcc419; }
+        .menu-item.sold-out { opacity: 0.6; background: #f8f9fa; }
         .item-info { flex-grow: 1; padding-right: 10px; }
         .item-name { font-weight: bold; font-size: 17px; margin-bottom: 6px; color: #222; }
         .item-price { color: #e63946; font-weight: bold; font-size: 16px; }
         button { padding: 8px 16px; background: #2b9348; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; }
+        button.sold-out-btn { background: #6c757d; cursor: not-allowed; }
+
         .cart-section { border-top: 3px solid #f1f3f5; padding-top: 15px; margin-top: 20px; }
         .cart-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 15px; }
         .cart-table th, .cart-table td { border-bottom: 1px solid #eee; padding: 10px 6px; text-align: left; vertical-align: middle; }
@@ -148,15 +151,20 @@
 
         <div class="menu-grid" id="menu-grid">
             {% for id, item in menu.items() %}
-                <div class="menu-item" data-category="{{ item.get('category', 'fried') }}">
+                <div class="menu-item {% if item.get('is_sold_out') %}sold-out{% endif %}" data-category="{{ item.get('category', 'fried') }}">
                     <div class="item-info">
                         <div class="item-name">
                             {% if item.get('category') == 'promo' %}🔥 {% endif %}{{ item.get('name', '') }}
+                            {% if item.get('is_sold_out') %}<span style="color: #d90429; font-size: 13px;"> (已售完)</span>{% endif %}
                         </div>
                         <div class="item-price">${{ item.get('price', 0) }}</div>
                     </div>
                     <div>
-                        <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
+                        {% if item.get('is_sold_out') %}
+                            <button class="sold-out-btn" disabled>已售完</button>
+                        {% else %}
+                            <button onclick="openOptionModal('{{ id }}', '{{ item.get('name', '') }}', {{ item.get('price', 0) }}, '{{ item.get('category', '') }}')">＋ 選購</button>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}
@@ -287,23 +295,17 @@
 <script>
     let latestHoursData = null;
 
-    // 🔥 每次都透過 API 向後台即時抓取最新營業時間設定
     async function fetchLatestHours() {
         try {
             let res = await fetch('/api/hours');
             let data = await res.json();
-            if (data) {
-                latestHoursData = data;
-            }
-        } catch (e) {
-            console.error("無法取得最新營業時間", e);
-        }
+            if (data) { latestHoursData = data; }
+        } catch (e) { console.error(e); }
     }
 
     async function checkIsOpenNowAsync() {
         await fetchLatestHours();
-        if (!latestHoursData) return true; // 若萬一斷線預設開放，避免影響生意
-
+        if (!latestHoursData) return true;
         if (latestHoursData.force_close) return false;
 
         const now = new Date();
@@ -361,7 +363,6 @@
         if (!isBooking) selectEl.value = "";
     }
 
-    // 🔥 網頁載入時立即向後台同步營業時間並判斷狀態
     window.addEventListener('DOMContentLoaded', async () => {
         let isOpen = await checkIsOpenNowAsync();
         if (!isOpen) {
