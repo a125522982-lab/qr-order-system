@@ -220,10 +220,11 @@
         </div>
 
         <div id="seasoning-section">
-            <div class="modal-option-title">🧂 胡椒選擇：</div>
+            <div class="modal-option-title">🧂 調味/胡椒選擇：</div>
             <div class="options-group" id="pepper-options">
                 <div class="option-btn selected" onclick="selectOption('pepper', '要胡椒', this)">要胡椒</div>
                 <div class="option-btn" onclick="selectOption('pepper', '不要胡椒', this)">不要胡椒</div>
+                <div class="option-btn" id="plum-powder-option" style="display: none;" onclick="selectOption('pepper', '加梅粉', this)">加梅粉</div>
             </div>
 
             <div class="modal-option-title">🌶️ 辣度選擇：</div>
@@ -423,6 +424,14 @@
         let sauceSec = document.getElementById('sauce-section');
         let chickenSidesSec = document.getElementById('chicken-sides-section');
         let wholeChickenNotice = document.getElementById('whole-chicken-notice');
+        let plumOption = document.getElementById('plum-powder-option');
+
+        // 🔥 如果是黃金地瓜條，顯示「加梅粉」選項
+        if (name.includes('地瓜') || name.includes('薯') || name.includes('黃金地瓜條')) {
+            plumOption.style.display = 'inline-block';
+        } else {
+            plumOption.style.display = 'none';
+        }
 
         let isOnlyQty = (category === 'drink' || category === 'promo' || name.includes('煉香花月圓') || name.includes('煉乳銀絲卷'));
         let isFriedWholeChicken = (name.includes('炸全雞'));
