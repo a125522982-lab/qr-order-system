@@ -22,7 +22,7 @@
             <a href="/logout" class="btn btn-outline-danger btn-sm fw-bold">🚪 登出</a>
         </div>
 
-        <!-- 🔥 日期篩選工具列 -->
+        <!-- 日期篩選工具列 -->
         <div class="card p-3 bg-white mb-4">
             <form method="GET" action="/admin" class="row g-2 align-items-center">
                 <div class="col-auto">
@@ -55,7 +55,7 @@
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="history-tab" data-bs-toggle="pill" data-bs-target="#history-pane">
-                    📜 已完成歷史訂單 ({{ completed_orders|length }})
+                    📜 歷史成交紀錄
                 </button>
             </li>
             <li class="nav-item">
@@ -65,7 +65,7 @@
             </li>
             <li class="nav-item">
                 <button class="nav-link" id="settings-tab" data-bs-toggle="pill" data-bs-target="#settings-pane">
-                    ⚙️ 菜單與營業時間
+                    ⚙️ 營業與菜單設定
                 </button>
             </li>
         </ul>
@@ -167,7 +167,7 @@
                                         </td>
                                         <td class="fw-bold text-danger">${{ o.total }}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteOrder('{{ o.id }}')">🗑️ 刪除紀錄</button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteOrder('{{ o.id }}')">🗑️ 刪除</button>
                                         </td>
                                     </tr>
                                 {% else %}
@@ -202,7 +202,7 @@
                                         <td><span class="badge bg-primary fs-6">{{ m.order_count }} 次</span></td>
                                         <td class="fw-bold text-danger">${{ m.total_spent }}</td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('{{ m.phone }}')">🗑️ 刪除常客</button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('{{ m.phone }}')">🗑️ 刪除</button>
                                         </td>
                                     </tr>
                                 {% else %}
@@ -214,11 +214,75 @@
                 </div>
             </div>
 
-            <!-- 5. 菜單與營業時間管理 -->
+            <!-- 5. 營業時間與菜單設定 -->
             <div class="tab-pane fade" id="settings-pane">
-                <div class="card p-3">
-                    <h5 class="card-title fw-bold">⚙️ 後台系統管理</h5>
-                    <p class="text-muted">（此處可繼續進行營業時間設定與品項估售管理）</p>
+                <div class="row">
+                    <!-- 營業時間設定 -->
+                    <div class="col-md-6">
+                        <div class="card p-3 mb-4">
+                            <h5 class="card-title fw-bold mb-3">🕒 營業時間與打烊設定</h5>
+                            <div class="mb-3 form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="forceCloseCheck" {% if hours.force_close %}checked{% endif %}>
+                                <label class="form-check-label fw-bold text-danger" for="forceCloseCheck">強制手動緊急打烊 (暫停線上點餐)</label>
+                            </div>
+                            <hr>
+                            <div id="hours-config-container">
+                                {% for day, info in hours.items() if day != 'force_close' %}
+                                    <div class="row g-2 align-items-center mb-2">
+                                        <div class="col-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input day-enabled" type="checkbox" id="en_{{ day }}" data-day="{{ day }}" {% if info.enabled %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold" for="en_{{ day }}">
+                                                    {% if day=='Mon' %}週一{% elif day=='Tue' %}週二{% elif day=='Wed' %}週三{% elif day=='Thu' %}週四{% elif day=='Fri' %}週五{% elif day=='Sat' %}週六{% elif day=='Sun' %}週日{% endif %}
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="time" class="form-control form-control-sm day-open" id="open_{{ day }}" value="{{ info.open }}">
+                                        </div>
+                                        <div class="col-1 text-center">至</div>
+                                        <div class="col-4">
+                                            <input type="time" class="form-control form-control-sm day-close" id="close_{{ day }}" value="{{ info.close }}">
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button class="btn btn-success w-100 mt-3 fw-bold" onclick="saveHoursSettings()">儲存營業時間設定</button>
+                        </div>
+                    </div>
+
+                    <!-- 菜單品項估售與優惠管理 -->
+                    <div class="col-md-6">
+                        <div class="card p-3 mb-4">
+                            <h5 class="card-title fw-bold mb-3">🔥 新增優惠/特價品項</h5>
+                            <div class="input-group mb-2">
+                                <input type="text" id="promo-name" class="form-control" placeholder="品項名稱 (例: 限量雞排套餐)">
+                                <input type="number" id="promo-price" class="form-control" placeholder="價格" style="max-width: 100px;">
+                                <button class="btn btn-warning fw-bold" onclick="addPromoItem()">新增</button>
+                            </div>
+                        </div>
+
+                        <div class="card p-3">
+                            <h5 class="card-title fw-bold mb-3">📦 品項估售狀態管理</h5>
+                            <div style="max-height: 350px; overflow-y: auto;" class="border p-2 rounded">
+                                {% for id, item in menu.items() %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                        <div>
+                                            <b>{{ item.name }}</b> <span class="text-danger">${{ item.price }}</span>
+                                            {% if item.category == 'promo' %}
+                                                <button class="btn btn-sm btn-outline-danger ms-2 py-0" onclick="deletePromo('{{ id }}')">刪除優惠</button>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-sm {% if item.is_sold_out %}btn-danger{% else %}btn-outline-success{% endif %}" onclick="toggleSoldOut('{{ id }}')">
+                                                {% if item.is_sold_out %}已售完(點擊上架){% else %}販售中(點擊售完){% endif %}
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -263,6 +327,52 @@
             let data = await res.json();
             if (data.success) location.reload();
             else alert(data.message || "刪除失敗");
+        }
+
+        async function toggleSoldOut(itemId) {
+            let res = await fetch('/api/menu/toggle_soldout', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_id: itemId }) });
+            let data = await res.json();
+            if (data.success) location.reload();
+        }
+
+        async function addPromoItem() {
+            let name = document.getElementById('promo-name').value.trim();
+            let price = document.getElementById('promo-price').value.trim();
+            if (!name || !price) { alert('請輸入名稱與價格'); return; }
+            let res = await fetch('/api/promo/add', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: name, price: price }) });
+            let data = await res.json();
+            if (data.success) location.reload();
+            else alert(data.message);
+        }
+
+        async function deletePromo(itemId) {
+            if (!confirm('確定要刪除此優惠品項嗎？')) return;
+            let res = await fetch('/api/promo/delete', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ item_id: itemId }) });
+            let data = await res.json();
+            if (data.success) location.reload();
+        }
+
+        async function saveHoursSettings() {
+            let days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+            let hoursData = {
+                force_close: document.getElementById('forceCloseCheck').checked
+            };
+            days.forEach(d => {
+                hoursData[d] = {
+                    enabled: document.getElementById(`en_${d}`).checked,
+                    open: document.getElementById(`open_${d}`).value,
+                    close: document.getElementById(`close_${d}`).value
+                };
+            });
+
+            let res = await fetch('/api/hours/save', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(hoursData) });
+            let data = await res.json();
+            if (data.success) {
+                alert('營業時間設定儲存成功！');
+                location.reload();
+            } else {
+                alert('儲存失敗：' + data.message);
+            }
         }
     </script>
 </body>
