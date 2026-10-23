@@ -108,17 +108,10 @@ def save_json_file(filename, data):
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
-def load_menu():
-    return load_json_file(MENU_FILE, default_menu)
-
-def save_menu(menu_data):
-    save_json_file(MENU_FILE, menu_data)
-
-def load_hours():
-    return load_json_file(HOURS_FILE, default_hours)
-
-def save_hours(hours_data):
-    save_json_file(HOURS_FILE, hours_data)
+def load_menu(): return load_json_file(MENU_FILE, default_menu)
+def save_menu(menu_data): save_json_file(MENU_FILE, menu_data)
+def load_hours(): return load_json_file(HOURS_FILE, default_hours)
+def save_hours(hours_data): save_json_file(HOURS_FILE, hours_data)
 
 def load_orders_db():
     data = load_json_file(ORDERS_FILE, {
@@ -158,8 +151,7 @@ def login_required(f):
 
 def register_or_update_member(phone, total_spent_delta, created_at_str):
     phone = str(phone).strip()
-    if len(phone) != 10:
-        return
+    if len(phone) != 10: return
     if phone not in MEMBERS_DB:
         MEMBERS_DB[phone] = {
             "phone": phone,
@@ -178,11 +170,8 @@ def get_customer_order_count(phone):
     return 0
 
 def is_currently_open(hours_data=None):
-    if hours_data is None:
-        hours_data = load_hours()
-        
-    if hours_data.get("force_close"):
-        return False
+    if hours_data is None: hours_data = load_hours()
+    if hours_data.get("force_close"): return False
 
     taiwan_tz = timezone(timedelta(hours=8))
     now = datetime.now(taiwan_tz)
@@ -190,14 +179,12 @@ def is_currently_open(hours_data=None):
     day_key = days_map[now.weekday()]
     
     day_config = hours_data.get(day_key, {})
-    if not day_config.get("enabled"):
-        return False
+    if not day_config.get("enabled"): return False
         
     try:
         open_time = datetime.strptime(day_config.get("open", "11:30"), "%H:%M").time()
         close_time = datetime.strptime(day_config.get("close", "20:00"), "%H:%M").time()
-        current_time = now.time()
-        return open_time <= current_time <= close_time
+        return open_time <= now.time() <= close_time
     except Exception:
         return True
 
@@ -211,13 +198,11 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session["logged_in"] = True
             return redirect(url_for("admin_page"))
         else:
             error = "帳號或密碼錯誤！"
-            
     return render_template("login.html", error=error)
 
 @app.route("/logout")
@@ -228,20 +213,34 @@ def logout():
 @app.route("/menu")
 def customer_menu():
     table = request.args.get("table", "1")
-    menu = load_menu()
-    hours = load_hours()
-    return render_template("customer.html", table=table, menu=menu, hours=hours)
+    return render_template("customer.html", table=table, menu=load_menu(), hours=load_hours())
 
-# 🔥 新增：讓客戶端隨時取得最新營業時間的 API
 @app.route("/api/hours", methods=["GET"])
-def get_hours_api():
-    return jsonify(load_hours())
+def get_hours_api(): return jsonify(load_hours())
 
 @app.route("/admin")
 @login_required
 def admin_page():
+    taiwan_tz = timezone(timedelta(hours=8))
+    today_str = datetime.now(taiwan_tz).strftime("%Y-%m-%d")
+    selected_date = request.args.get("date", today_str)
+
+    def filter_by_date(order_list):
+        result = []
+        for o in order_list:
+            d_str = o.get("date_key")
+            if not d_str and o.get("created_at"):
+                d_str = o.get("created_at").split(" ")[0]
+            if d_str == selected_date:
+                o["order_count"] = get_customer_order_count(o.get("phone"))
+                result.append(o)
+        return result
+
+    filtered_completed = filter_by_date(COMPLETED_ORDERS)
+    filtered_cancelled = filter_by_date(CANCELLED_ORDERS)
+
     item_stats = {}
-    for o in COMPLETED_ORDERS:
+    for o in filtered_completed:
         for item in o.get("food_list", []):
             name = item.get("name", "未知品項")
             qty = item.get("quantity", 1)
@@ -261,17 +260,18 @@ def admin_page():
         hours=load_hours(),
         orders=attach_order_count(list(ORDERS)),
         accepted_orders=attach_order_count(list(ACCEPTED_ORDERS)),
-        completed_orders=attach_order_count(list(COMPLETED_ORDERS)),
-        cancelled_orders=attach_order_count(list(CANCELLED_ORDERS)),
+        completed_orders=filtered_completed,
+        cancelled_orders=filtered_cancelled,
         members=members_list,
-        total_revenue=sum(o.get("total", 0) for o in COMPLETED_ORDERS),
-        item_stats=item_stats
+        total_revenue=sum(o.get("total", 0) for o in filtered_completed),
+        item_stats=item_stats,
+        selected_date=selected_date,
+        today_str=today_str
     )
 
 @app.route("/api/admin/check_orders", methods=["GET"])
 @login_required
-def api_check_orders():
-    return jsonify({"pending_count": len(ORDERS)})
+def api_check_orders(): return jsonify({"pending_count": len(ORDERS)})
 
 @app.route("/api/hours/save", methods=["POST"])
 @login_required
@@ -342,20 +342,20 @@ def delete_promo_item():
 @app.route("/api/order", methods=["POST"])
 def place_order():
     try:
-        # 下單時以最新讀取的營業時間為準
         if not is_currently_open():
             return jsonify({"success": False, "message": "目前為非營業時間或已打烊，暫停線上點餐！"}), 403
 
         data = request.get_json(force=True, silent=True)
-        if not data:
-            return jsonify({"success": False, "message": "無效資料"}), 400
+        if not data: return jsonify({"success": False, "message": "無效資料"}), 400
 
         order_id = str(int(time.time() * 1000))
         phone = str(data.get("phone", "0000000000")).strip()
         booking_time = data.get("booking_time", "").strip()
         
         taiwan_timezone = timezone(timedelta(hours=8))
-        now_str = datetime.now(taiwan_timezone).strftime("%m/%d %H:%M")
+        now_dt = datetime.now(taiwan_timezone)
+        date_key = now_dt.strftime("%Y-%m-%d")
+        now_str = now_dt.strftime("%Y-%m-%d %H:%M")
         
         order_type = "預約單" if booking_time else "即時單"
         est_time_display = f"預約 {booking_time} 取餐" if booking_time else "等待店家確認等候時間..."
@@ -373,7 +373,8 @@ def place_order():
             "booking_time": booking_time,
             "est_time": est_time_display,
             "target_timestamp": 0,
-            "created_at": now_str
+            "created_at": now_str,
+            "date_key": date_key
         }
 
         ORDERS.append(new_order)
@@ -502,6 +503,38 @@ def cancel_order():
                 save_orders_db()
                 return jsonify({"success": True})
     return jsonify({"success": False}), 404
+
+# 🔥 新增：手動刪除歷史訂單功能
+@app.route("/api/admin/delete_order", methods=["POST"])
+@login_required
+def delete_order():
+    try:
+        data = request.get_json(silent=True) or {}
+        target_id = str(data.get("order_id", ""))
+        for lst in [COMPLETED_ORDERS, CANCELLED_ORDERS]:
+            for i, order in enumerate(lst):
+                if str(order.get("id")) == target_id:
+                    lst.pop(i)
+                    save_orders_db()
+                    return jsonify({"success": True})
+        return jsonify({"success": False, "message": "找不到該訂單"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+
+# 🔥 新增：手動刪除會員資料功能
+@app.route("/api/admin/delete_member", methods=["POST"])
+@login_required
+def delete_member():
+    try:
+        data = request.get_json(silent=True) or {}
+        phone = str(data.get("phone", "")).strip()
+        if phone in MEMBERS_DB:
+            del MEMBERS_DB[phone]
+            save_orders_db()
+            return jsonify({"success": True})
+        return jsonify({"success": False, "message": "找不到該會員"}), 404
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
