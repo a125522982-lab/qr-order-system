@@ -16,7 +16,7 @@ MENU_FILE = "menu.json"
 HOURS_FILE = "hours.json"
 ORDERS_FILE = "orders.json"
 
-PRINTER_IP = "192.168.1.100"
+PRINTER_IP = "192.168.1.200"
 PRINTER_PORT = 9100
 
 default_menu = {
